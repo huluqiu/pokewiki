@@ -1,0 +1,34 @@
+pokemon:
+  id: 1
+  name: 妙蛙种子
+  category: 种子
+  type: [草, 毒]
+  ability: {normal: [茂盛], hidden: 叶绿素}
+  expto100: 1059860
+  region: {kanto: 1, johto: 231, hoenn: ~, sinnoh: ~, unova: ~, kalos: 80, alola: ~}
+  height: 0.7
+  weight: 6.9
+  dex_color: green
+  catch_value: 45
+  catchRate: 5.9
+  sexRate: 87.5
+  eggGroups: [怪兽, 植物]
+  eggCycle: 21
+  eggStep: 5355
+  baseStat: {hp: 0, attack: 0, defense: 0, spAttack: 1, spDefense: 0, speed: 0}
+  baseExp: 64
+  vsExp: 641
+  appearance: text
+  sexDiff: text
+  specialAbility: text
+  temper: text
+  habit: text
+  diet: text
+  habitat: text
+  ride: text
+  hpStats: 45
+  attackStats: {hp: 45, attack: 49, defense: 49, spAttack: 65, spDefense: 65m speed: 45}
+  ability50: {hp, attack, defense, spAttack, spDefense, speed}
+  total_ability: 318
+  moves_up: []
+  moves_learn: []
