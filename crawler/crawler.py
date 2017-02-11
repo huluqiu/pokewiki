@@ -85,13 +85,12 @@ with open('logconf.yaml') as f:
     dictConfig(logconfig)
 
 domain = 'http://www.pokemon.name'
-path = '/wiki/宝可梦列表'
 headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
     'cookie': 'bdshare_firstime=1486483047635; wikiEditor-0-booklet-wikicode-page=tags; wikiEditor-0-booklet-characters2-page=hiragana; wikiEditor-0-booklet-symbols-page=punc; Hm_lvt_5d5b68f5aaae57bdebbe134a5acde926=1486483047; Hm_lpvt_5d5b68f5aaae57bdebbe134a5acde926=1486535657'
 }
 (Crawler(pageProcessor, domain=domain)
-        .addRequest(path, tag='pokedex', headers=headers)
+        .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
         .setScheduler(FileCacheScheduler('./'))
         .addPipeline(ConsolePipeline())
         .addPipeline(JsonPipeline('./jsons/'))
