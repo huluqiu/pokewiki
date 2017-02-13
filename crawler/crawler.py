@@ -29,8 +29,21 @@ def process_pokedex(page: Page):
     if page.tag != 'pokedex':
         return
 
-    pokemonXpath = "//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"
-    # pokemonXpath = "//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[3]//a/attribute::href"
+    pokemons = []
+    mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
+    tables = mw_content_text_node.xpath("table[position()<last()]")
+    for gen, table in enumerate(tables):
+        for tr in table:
+            pokemon_class = tr.xpath("td[1]/b/text()")[0]
+            pokemon_ul = tr.xpath("td[2]/ul")[0]
+            for li in pokemon_ul:
+                num = li.text
+                name = li.xpath(".//a/text()")[0]
+                pokemons.append((num, name, pokemon_class, gen + 1))
+    page.addTargetValue('pokemons', pokemons)
+
+    # pokemonXpath = "//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"
+    pokemonXpath = "//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[3]//a/attribute::href"
     page.addRequest(page.tree.xpath(pokemonXpath), tag='pokemon', headers=headers)
 
 
@@ -38,38 +51,15 @@ def process_pokemon(page: Page):
     if page.tag != 'pokemon':
         return
 
-    page.addTargetValue('id', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[2]/td/table/tr[2]/td[2]/b"))
+    page.addTargetValue('num', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[2]/td/table/tr[2]/td[2]/b"))
     page.addTargetValue('name', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[1]/td/table/tr[1]/td/div/div[3]"))
-
-    types = []
-    typeNode = page.tree.xpath("//*[@id='pokemonform-1']/table/tr[2]/td[2]")
-    if typeNode:
-        for node in typeNode[0]:
-            if node.tag == 'span':
-                types.append(node.text)
-    page.addTargetValue('types', types)
-
-    ability = {'normal': [], 'hidden': ''}
-    normalAbilityNode = page.tree.xpath("//*[@id='pokemonform-1']/table/tr[3]/td[2]")
-    normal = []
-    if normalAbilityNode:
-        for node in normalAbilityNode[0]:
-            if node.tag == 'a':
-                normal.append(node.text)
-    ability['normal'] = normal
-    ability['hidden'] = textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[4]/td[2]/a")
-    page.addTargetValue('ability', ability)
-
+    page.addTargetValue('name_jp_en', textInXpath(page.tree, "//*[@id='mw-content-text']/p/text()"))
     page.addTargetValue('category', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[5]/td[2]"))
-    page.addTargetValue('height', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[6]/td[2]"))
-    page.addTargetValue('weight', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[7]/td[2]"))
-    page.addTargetValue('hp', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[9]/td[2]"))
-    page.addTargetValue('attack', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[10]/td[2]"))
-    page.addTargetValue('defense', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[11]/td[2]"))
-    page.addTargetValue('sp_attack', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[12]/td[2]"))
-    page.addTargetValue('sp_defense', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[13]/td[2]"))
-    page.addTargetValue('speed', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[14]/td[2]"))
-
+    page.addTargetValue('eggStep', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[20]/td[2]"))
+    page.addTargetValue('gender', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[21]/td[2]"))
+    page.addTargetValue('catch', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[22]/td[2]"))
+    page.addTargetValue('happiness', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[23]/td[2]"))
+    page.addTargetValue('expto100', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[24]/td[2]"))
     eggGroups = []
     eggNode = page.tree.xpath("//*[@id='pokemonform-1']/table/tr[19]/td[2]")
     if eggNode:
@@ -78,12 +68,49 @@ def process_pokemon(page: Page):
                 eggGroups.append(node.text)
     page.addTargetValue('eggGroups', eggGroups)
 
-    page.addTargetValue('eggStep', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[20]/td[2]"))
-    page.addTargetValue('gender', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[21]/td[2]"))
-    page.addTargetValue('catch', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[22]/td[2]"))
-    page.addTargetValue('happiness', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[23]/td[2]"))
-    page.addTargetValue('expto100', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[24]/td[2]"))
-    page.addTargetValue('baseStat', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[25]/td[2]"))
+    forms = []
+    form_names = page.tree.xpath("//*[@id='pokemonforms']/table/tr/td[1]/ul/li/div/text()")
+    tables = page.tree.xpath("//*[@id='pokemonforms']/table/tr/td[2]/div/table")
+    for i, table in enumerate(tables):
+        types = []
+        typeNode = table.xpath("tr[2]/td[2]")
+        if typeNode:
+            for node in typeNode[0]:
+                if node.tag == 'span':
+                    types.append(node.text)
+
+        ability = {'normal': [], 'hidden': ''}
+        normalAbilityNode = table.xpath("tr[3]/td[2]")
+        normal = []
+        if normalAbilityNode:
+            for node in normalAbilityNode[0]:
+                if node.tag == 'a':
+                    normal.append(node.text)
+        ability['normal'] = normal
+        ability['hidden'] = textInXpath(table, "tr[4]/td[2]/a")
+
+        height = textInXpath(table, "tr[6]/td[2]")
+        weight = textInXpath(table, "tr[7]/td[2]")
+        hp = textInXpath(table, "tr[9]/td[2]")
+        attack = textInXpath(table, "tr[10]/td[2]")
+        defense = textInXpath(table, "tr[11]/td[2]")
+        sp_attack = textInXpath(table, "tr[12]/td[2]")
+        sp_defense = textInXpath(table, "tr[13]/td[2]")
+        speed = textInXpath(table, "tr[14]/td[2]")
+        baseStat = textInXpath(table, "tr[25]/td[2]")
+
+        forms.append((form_names[i], types, ability, height, weight, baseStat, (hp, attack, defense, sp_attack, sp_defense, speed)))
+    page.addTargetValue('forms', forms)
+
+    mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
+    evolution_table_index = -1
+    for i, child in mw_content_text_node:
+        if child.tag == 'h3' and child.xpath('string(.)') == '进化':
+            evolution_table_index = i + 1
+    evolution_table = mw_content_text_node[evolution_table_index].xpath("tr/td/table")[0]
+
+(1, way, condition, [(2, way, condition, [])])
+def get_evolution(node):
 
 
 def process_ability_list(page: Page):
@@ -195,12 +222,12 @@ def process_move(page: Page):
 
 
 def pageProcessor(page: Page):
-    # process_pokedex(page)
-    # process_pokemon(page)
+    process_pokedex(page)
+    process_pokemon(page)
     # process_ability_list(page)
     # process_ability(page)
-    process_move_list(page)
-    process_move(page)
+    # process_move_list(page)
+    # process_move(page)
 
 
 class PsycopgPipeline(Pipeline):
@@ -227,8 +254,8 @@ class PsycopgPipeline(Pipeline):
 
 (Crawler(pageProcessor, domain=domain)
         # .addRequest('/wiki/特性/按世代分类', tag='ability_list', headers=headers)
-        # .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
-        .addRequest('/wiki/招式列表', tag='move_list', headers=headers)
+        .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
+        # .addRequest('/wiki/招式列表', tag='move_list', headers=headers)
         .setScheduler(FileCacheScheduler('.'))
         .addPipeline(ConsolePipeline())
         # .addPipeline('jsons')
