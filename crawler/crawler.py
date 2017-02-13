@@ -101,7 +101,7 @@ def process_ability_list(page: Page):
         v['name_en'] = table.xpath("tr/td[3]/text()")
         v['effect'] = table.xpath("tr/td[4]/text()")
         page.addTargetValue(str(i), v)
-    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href", tag='ability', headers=headers))
+    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability', headers=headers)
     # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability', headers=headers)
 
 
@@ -132,11 +132,75 @@ def process_ability(page: Page):
         page.addTargetValue('effect_map', mw_content_text_node[end - 1].xpath('string(.)'))
 
 
+def process_move_list(page: Page):
+    if page.tag == 'move_list':
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li[1]//a/attribute::href"), tag='move_type_list', headers=headers)
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list', headers=headers)
+    elif page.tag == 'move_type_list':
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move', headers=headers)
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move', headers=headers)
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move', headers=headers)
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move', headers=headers)
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[position()>1]/tr/td[1]//a/attribute::href"), tag='move', headers=headers)
+
+
+def process_move(page: Page):
+    if page.tag != 'move':
+        return
+
+    page.addTargetValue('name', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[1]/td/table/tr[1]/td/div[1]"))
+    page.addTargetValue('name_jp_en', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[1]/td/table/tr[1]/td/div[2]"))
+    page.addTargetValue('description', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[1]/td/table/tr[2]/td"))
+    page.addTargetValue('type', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[2]/td[2]/span"))
+    page.addTargetValue('kind', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[3]/td[2]/span"))
+    page.addTargetValue('power', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[4]/td[2]"))
+    page.addTargetValue('accuracy', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[5]/td[2]"))
+    page.addTargetValue('pp', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[6]/td[2]/b"))
+    page.addTargetValue('priority', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[2]/td/table/tr[7]/td[2]"))
+    page.addTargetValue('gen', textInXpath(page.tree, "//*[@id='mw-content-text']/p/a[3]"))
+    page.addTargetValue('z_stone', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[5]/td/table/tr[2]/td[2]"))
+    page.addTargetValue('z_move', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[5]/td/table/tr[3]/td[2]/a"))
+    page.addTargetValue('z_power', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[5]/td/table/tr[4]/td[2]"))
+
+    mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
+    effect_battle = -1
+    effect_map = -1
+    end = -1
+    for i, child in enumerate(mw_content_text_node):
+        if child.tag == 'h2' and child.xpath('string(.)') == '战斗效果':
+            effect_battle = i
+        elif child.tag == 'h2' and child.xpath('string(.)') == '冒险效果':
+            effect_map = i
+        elif child.tag == 'h2' and child.xpath('string(.)') == '可学会的宝可梦':
+            end = i
+    page.addTargetValue('effect_battle', mw_content_text_node[effect_battle + 1].xpath('string(.)'))
+    if effect_map == -1:
+        effect_battle_end = end - 1
+    else:
+        effect_battle_end = effect_map - 1
+
+    if effect_map == -1:
+        page.addTargetValue('effect_map', '')
+    else:
+        page.addTargetValue('effect_map', mw_content_text_node[effect_map + 1].xpath('string(.)'))
+
+    states = {}
+    if effect_battle_end - effect_battle > 1:
+        state_nodes = mw_content_text_node[effect_battle + 2:effect_battle_end + 1]
+        titles = list(filter(lambda n: n.tag == 'h3', state_nodes))
+        dess = list(filter(lambda n: n.tag == 'dl', state_nodes))
+        for i, title in enumerate(titles):
+            states[title.xpath('string(.)')] = dess[i].xpath('string(.)')
+    page.addTargetValue('states', states)
+
+
 def pageProcessor(page: Page):
     # process_pokedex(page)
     # process_pokemon(page)
-    process_ability_list(page)
-    process_ability(page)
+    # process_ability_list(page)
+    # process_ability(page)
+    process_move_list(page)
+    process_move(page)
 
 
 class PsycopgPipeline(Pipeline):
@@ -163,7 +227,8 @@ class PsycopgPipeline(Pipeline):
 
 (Crawler(pageProcessor, domain=domain)
         # .addRequest('/wiki/特性/按世代分类', tag='ability_list', headers=headers)
-        .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
+        # .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
+        .addRequest('/wiki/招式列表', tag='move_list', headers=headers)
         .setScheduler(FileCacheScheduler('.'))
         .addPipeline(ConsolePipeline())
         # .addPipeline('jsons')
