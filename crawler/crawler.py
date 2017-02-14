@@ -5,6 +5,7 @@ from gotyou.crawler import Crawler, Page, FileCacheScheduler, ConsolePipeline, P
 from logging.config import dictConfig
 import yaml
 import psycopg2
+import os
 
 with open('logconf.yaml') as f:
     logconfig = yaml.load(f)
@@ -52,6 +53,8 @@ def process_pokedex(page: Page):
 def process_pokemon(page: Page):
     if page.tag != 'pokemon':
         return
+
+    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr/td[4]/a/attribute::href"), tag='pokemon_move_map', headers=headers)
 
     page.addTargetValue('num', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[2]/td/table/tr[2]/td[2]/b"))
     page.addTargetValue('name', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[1]/td/table/tr[1]/td/div/div[3]"))
@@ -244,13 +247,44 @@ def process_move(page: Page):
     page.addTargetValue('states', states)
 
 
+def process_pokemon_move_map(page: Page):
+    if page.tag != 'pokemon_move_map':
+        return
+
+    page.addTargetValue('num', os.path.basename(page.url))
+    pokemon_move_map = []
+    mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
+    start = -1
+    end = -1
+    for i, node in enumerate(mw_content_text_node):
+        if node.tag == 'h2' and node.xpath('string(.)') == '招式':
+            start = i + 1
+        if node.tag == 'h2' and node.xpath('string(.)') == '相关链接':
+            end = i
+    nodes = mw_content_text_node[start:end]
+    h3s = list(filter(lambda n: n.tag == 'h3', nodes))
+    tables = list(filter(lambda n: n.tag == 'table', nodes))
+    for i, h3 in enumerate(h3s):
+        table = tables[i]
+        way = h3.xpath('string(.)')
+        moves = []
+        for tr in table[1:]:
+            condition = tr[0].xpath('string(.)')
+            move_name = tr[2].xpath('string(.)')
+            form = tr[8].xpath('string(.)')
+            moves.append((condition, move_name, form))
+        pokemon_move_map.append((way, moves))
+    page.addTargetValue('pokemon_move_map', pokemon_move_map)
+
+
 def pageProcessor(page: Page):
     process_pokedex(page)
     process_pokemon(page)
-    # process_ability_list(page)
-    # process_ability(page)
-    # process_move_list(page)
-    # process_move(page)
+    process_pokemon_move_map(page)
+    process_ability_list(page)
+    process_ability(page)
+    process_move_list(page)
+    process_move(page)
 
 
 class PsycopgPipeline(Pipeline):
