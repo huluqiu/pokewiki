@@ -42,9 +42,11 @@ def process_pokedex(page: Page):
                 pokemons.append((num, name, pokemon_class, gen + 1))
     page.addTargetValue('pokemons', pokemons)
 
-    # pokemonXpath = "//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"
-    pokemonXpath = "//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[3]//a/attribute::href"
-    page.addRequest(page.tree.xpath(pokemonXpath), tag='pokemon', headers=headers)
+    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"), tag='pokemon', headers=headers)
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[6]//a/attribute::href"), tag='pokemon', headers=headers)
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[1]//a/attribute::href"), tag='pokemon', headers=headers)
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[4]//a/attribute::href"), tag='pokemon', headers=headers)
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[2]/td[2]/ul/li[124]//a/attribute::href"), tag='pokemon', headers=headers)
 
 
 def process_pokemon(page: Page):
@@ -53,7 +55,7 @@ def process_pokemon(page: Page):
 
     page.addTargetValue('num', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[2]/td/table/tr[2]/td[2]/b"))
     page.addTargetValue('name', textInXpath(page.tree, "//*[@id='mw-content-text']/table[2]/tr[1]/td/table/tr[1]/td/div/div[3]"))
-    page.addTargetValue('name_jp_en', textInXpath(page.tree, "//*[@id='mw-content-text']/p/text()"))
+    page.addTargetValue('name_jp_en', textInXpath(page.tree, "//*[@id='mw-content-text']/p"))
     page.addTargetValue('category', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[5]/td[2]"))
     page.addTargetValue('eggStep', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[20]/td[2]"))
     page.addTargetValue('gender', textInXpath(page.tree, "//*[@id='pokemonform-1']/table/tr[21]/td[2]"))
@@ -69,7 +71,7 @@ def process_pokemon(page: Page):
     page.addTargetValue('eggGroups', eggGroups)
 
     forms = []
-    form_names = page.tree.xpath("//*[@id='pokemonforms']/table/tr/td[1]/ul/li/div/text()")
+    form_names = page.tree.xpath("//*[@id='pokemonforms']/table/tr/td[1]//div/text()")
     tables = page.tree.xpath("//*[@id='pokemonforms']/table/tr/td[2]/div/table")
     for i, table in enumerate(tables):
         types = []
@@ -102,15 +104,36 @@ def process_pokemon(page: Page):
         forms.append((form_names[i], types, ability, height, weight, baseStat, (hp, attack, defense, sp_attack, sp_defense, speed)))
     page.addTargetValue('forms', forms)
 
+    pokemon_evolution = ()
     mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
     evolution_table_index = -1
-    for i, child in mw_content_text_node:
+    for i, child in enumerate(mw_content_text_node):
         if child.tag == 'h3' and child.xpath('string(.)') == '进化':
             evolution_table_index = i + 1
     evolution_table = mw_content_text_node[evolution_table_index].xpath("tr/td/table")[0]
+    poke_init_name = evolution_table.xpath("tr/td[1]")[0].xpath('string(.)')
+    td2 = evolution_table.xpath("tr/td[2]")
+    if len(td2) == 0:
+        evolutions = []
+    else:
+        evolutions = get_evolution(td2[0][0])
+    pokemon_evolution = (poke_init_name, evolutions)
+    page.addTargetValue('pokemon_evolution', pokemon_evolution)
 
-(1, way, condition, [(2, way, condition, [])])
-def get_evolution(node):
+
+def get_evolution(table):
+    evolutions = []
+    for tr in table:
+        tds = tr.xpath("td")
+        way = tds[0][1].xpath('string(.)')
+        condition = tds[0][2].xpath('string(.)')
+        evolution_name = tds[1].xpath('string(.)')
+        next_evolution_table = tr.xpath('td[3]/table')
+        next_evolutions = []
+        if len(next_evolution_table) > 0:
+            next_evolutions = get_evolution(next_evolution_table[0])
+        evolutions.append((way, condition, evolution_name, next_evolutions))
+    return evolutions
 
 
 def process_ability_list(page: Page):
