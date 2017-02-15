@@ -7,6 +7,8 @@ import yaml
 import psycopg2
 import os
 
+debug = True
+
 with open('logconf.yaml') as f:
     logconfig = yaml.load(f)
     dictConfig(logconfig)
@@ -37,11 +39,13 @@ def process_pokedex(page: Page):
                 pokemons.append((num, name, pokemon_class, gen + 1))
     page.addTargetValue('pokemons', pokemons)
 
-    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"), tag='pokemon')
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[6]//a/attribute::href"), tag='pokemon')
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[1]//a/attribute::href"), tag='pokemon')
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[4]//a/attribute::href"), tag='pokemon')
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[2]/td[2]/ul/li[124]//a/attribute::href"), tag='pokemon')
+    if debug:
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[6]//a/attribute::href"), tag='pokemon')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[1]//a/attribute::href"), tag='pokemon')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[4]//a/attribute::href"), tag='pokemon')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[2]/td[2]/ul/li[124]//a/attribute::href"), tag='pokemon')
+    else:
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"), tag='pokemon')
 
 
 def process_pokemon(page: Page):
@@ -148,8 +152,12 @@ def process_ability_list(page: Page):
         v['name_en'] = table.xpath("tr/td[3]/text()")
         v['effect'] = table.xpath("tr/td[4]/text()")
         page.addTargetValue(str(i), v)
-    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability')
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability')
+    if debug:
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[52]//a/attribute::href"), tag='ability')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[39]//a/attribute::href"), tag='ability')
+    else:
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability')
 
 
 def process_ability(page: Page):
@@ -181,14 +189,18 @@ def process_ability(page: Page):
 
 def process_move_list(page: Page):
     if page.tag == 'move_list':
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li[1]//a/attribute::href"), tag='move_type_list')
-        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list')
+        if debug:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li[1]//a/attribute::href"), tag='move_type_list')
+        else:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list')
     elif page.tag == 'move_type_list':
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move')
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move')
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move')
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move')
-        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[position()>1]/tr/td[1]//a/attribute::href"), tag='move')
+        if debug:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move')
+        else:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[position()>1]/tr/td[1]//a/attribute::href"), tag='move')
 
 
 def process_move(page: Page):
@@ -271,7 +283,7 @@ def process_pokemon_move_map(page: Page):
     page.addTargetValue('pokemon_move_map', pokemon_move_map)
 
 
-def pageProcessor(page: Page):
+def pageProcessor_pokename(page: Page):
     process_pokedex(page)
     process_pokemon(page)
     process_pokemon_move_map(page)
@@ -279,6 +291,28 @@ def pageProcessor(page: Page):
     process_ability(page)
     process_move_list(page)
     process_move(page)
+
+
+def pageProcessor_52poke(page: Page):
+    if page.tag == 'pokedex_52':
+        if debug:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[4]/td[2]/a/attribute::href"), tag='pokemon_52')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[9]/td[2]/a/attribute::href"), tag='pokemon_52')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[391]/td[2]/a/attribute::href"), tag='pokemon_52')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[750]/td[2]/a/attribute::href"), tag='pokemon_52')
+        else:
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr/td[2]/a/attribute::href"), tag='pokemon_52')
+    elif page.tag == 'pokemon_52':
+        tables = page.tree.xpath("//*[@id='mw-content-text']/table")
+        info_table_index = -1
+        for i, table in enumerate(tables[:4]):
+            if 'prenxt-nav' in table.attrib['class']:
+                info_table_index = i + 1
+        info_table = tables[info_table_index]
+        if info_table.attrib['class'] == 'a-r':
+            page.addTargetValue('pokemon_img', info_table.xpath("tr/td/table/tr[2]//img/attribute::data-url"))
+        else:
+            page.addTargetValue('pokemon_img', info_table.xpath("tr[2]//img/attribute::data-url"))
 
 
 class PsycopgPipeline(Pipeline):
@@ -303,16 +337,39 @@ class PsycopgPipeline(Pipeline):
             self.con.commit()
 
 
+jsonPipeline = JsonPipeline('jsons')
+fileCacheScheduler = FileCacheScheduler('.')
+
 domain = 'http://www.pokemon.name'
 headers = {
-    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
-    'cookie': 'bdshare_firstime=1486483047635; wikiEditor-0-booklet-wikicode-page=tags; wikiEditor-0-booklet-characters2-page=hiragana; wikiEditor-0-booklet-symbols-page=punc; Hm_lvt_5d5b68f5aaae57bdebbe134a5acde926=1486483047; Hm_lpvt_5d5b68f5aaae57bdebbe134a5acde926=1486901302'
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, sdch',
+    'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6',
+    'Cache-Control': 'max-age=0',
+    'Connection': 'keep-alive',
+    'Cookie': 'bdshare_firstime=1486483047635; wikiEditor-0-booklet-wikicode-page=tags; wikiEditor-0-booklet-characters2-page=hiragana; wikiEditor-0-booklet-symbols-page=punc; f7pJ_2132_saltkey=Un2jHJRA; f7pJ_2132_lastvisit=1486993886; Hm_lvt_5d5b68f5aaae57bdebbe134a5acde926=1486483047; Hm_lpvt_5d5b68f5aaae57bdebbe134a5acde926=1487158255',
+    'Host': 'www.pokemon.name',
+    'Upgrade-Insecure-Requests': '1',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
 }
-(Crawler(pageProcessor, domain=domain, headers=headers)
+(Crawler(pageProcessor_pokename, domain=domain, headers=headers, delay=2)
         .addRequest('/wiki/特性/按世代分类', tag='ability_list')
         .addRequest('/wiki/宝可梦列表', tag='pokedex')
         .addRequest('/wiki/招式列表', tag='move_list')
-        .setScheduler(FileCacheScheduler('.'))
-        .addPipeline(ConsolePipeline())
-        .addPipeline(JsonPipeline('jsons'))
+        .setScheduler(fileCacheScheduler)
+        # .addPipeline(ConsolePipeline())
+        .addPipeline(jsonPipeline)
+        .run())
+
+domain = 'https://wiki.52poke.com'
+headers = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Cache-Control': 'max-age=0',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8'
+}
+(Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2)
+        .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
+        .setScheduler(fileCacheScheduler)
+        # .addPipeline(ConsolePipeline())
+        .addPipeline(jsonPipeline)
         .run())
