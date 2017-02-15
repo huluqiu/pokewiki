@@ -154,8 +154,10 @@ def process_ability_list(page: Page):
         page.addTargetValue(str(i), v)
     if debug:
         page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[6]//a/attribute::href"), tag='ability')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[17]//a/attribute::href"), tag='ability')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[19]//a/attribute::href"), tag='ability')
         page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[52]//a/attribute::href"), tag='ability')
-        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[39]//a/attribute::href"), tag='ability')
     else:
         page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability')
 
@@ -165,26 +167,47 @@ def process_ability(page: Page):
         return
 
     page.addTargetValue('name', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr/td/table/tr[1]/td/div[1]"))
-    effect_battle = -1
-    effect_map = -1
-    end = -1
     mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
-    for i, child in enumerate(mw_content_text_node):
-        if child.tag == 'h2' and child.xpath('string(.)') == '战斗效果':
-            effect_battle = i
-        elif child.tag == 'h2' and child.xpath('string(.)') == '地图效果':
-            effect_map = i
-        elif child.tag == 'h2' and child.xpath('string(.)') == '持有该特性的宝可梦':
-            end = i
-    if effect_map == -1:
-        effect_battle = mw_content_text_node[end - 1].xpath('string(.)')
-    else:
-        effect_battle = mw_content_text_node[effect_map - 1].xpath('string(.)')
-    page.addTargetValue('effect_battle', effect_battle)
-    if effect_map == -1:
-        page.addTargetValue('effect_map', '')
-    else:
-        page.addTargetValue('effect_map', mw_content_text_node[end - 1].xpath('string(.)'))
+    effects = get_effect(mw_content_text_node)
+    page.addTargetValue('effect_battle', effects[0])
+    page.addTargetValue('effect_map', effects[1])
+
+
+def get_effect(node):
+    node = list(filter(lambda n: n.tag in 'h2,h3,dl,p', node))
+    h2_sep = node_split_after(node, 'h2')
+    h2_sep = list(filter(lambda n: '效果' in n[0].xpath('string(.)'), h2_sep))
+    effects = []
+    for h2_and_sub in h2_sep:
+        h3_sep = node_split_after(h2_and_sub[1:], 'h3')
+        effect = ''
+        if h3_sep[0][0].tag != 'h3':
+            for node in h3_sep[0]:
+                effect += node.xpath('string(.)')
+        else:
+            nodes = list(filter(lambda n: '世代' in n[0].xpath('string(.)'), h3_sep))
+            nodes = nodes[-1]
+            for node in nodes[1:]:
+                effect += node.xpath('string(.)')
+        effects.append(effect)
+    if len(effects) == 1:
+        effects.append('')
+    return effects
+
+
+def node_split_after(nodes, tag):
+    sep_list = []
+    index = -1
+    for node in nodes:
+        if node.tag == tag:
+            index += 1
+            sep_list.append([node])
+        else:
+            if not sep_list:
+                sep_list.append([])
+                index += 1
+            sep_list[index].append(node)
+    return sep_list
 
 
 def process_move_list(page: Page):
@@ -195,8 +218,9 @@ def process_move_list(page: Page):
             page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list')
     elif page.tag == 'move_type_list':
         if debug:
-            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[6]/td[1]/a/attribute::href"), tag='move')
             page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move')
+            page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[11]/td[1]/a/attribute::href"), tag='move')
             page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move')
             page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move')
         else:
@@ -222,35 +246,9 @@ def process_move(page: Page):
     page.addTargetValue('z_power', textInXpath(page.tree, "//*[@id='mw-content-text']/table[1]/tr[5]/td/table/tr[4]/td[2]"))
 
     mw_content_text_node = page.tree.xpath("//*[@id='mw-content-text']")[0]
-    effect_battle = -1
-    effect_map = -1
-    end = -1
-    for i, child in enumerate(mw_content_text_node):
-        if child.tag == 'h2' and child.xpath('string(.)') == '战斗效果':
-            effect_battle = i
-        elif child.tag == 'h2' and child.xpath('string(.)') == '冒险效果':
-            effect_map = i
-        elif child.tag == 'h2' and child.xpath('string(.)') == '可学会的宝可梦':
-            end = i
-    page.addTargetValue('effect_battle', mw_content_text_node[effect_battle + 1].xpath('string(.)'))
-    if effect_map == -1:
-        effect_battle_end = end - 1
-    else:
-        effect_battle_end = effect_map - 1
-
-    if effect_map == -1:
-        page.addTargetValue('effect_map', '')
-    else:
-        page.addTargetValue('effect_map', mw_content_text_node[effect_map + 1].xpath('string(.)'))
-
-    states = {}
-    if effect_battle_end - effect_battle > 1:
-        state_nodes = mw_content_text_node[effect_battle + 2:effect_battle_end + 1]
-        titles = list(filter(lambda n: n.tag == 'h3', state_nodes))
-        dess = list(filter(lambda n: n.tag == 'dl', state_nodes))
-        for i, title in enumerate(titles):
-            states[title.xpath('string(.)')] = dess[i].xpath('string(.)')
-    page.addTargetValue('states', states)
+    effects = get_effect(mw_content_text_node)
+    page.addTargetValue('effect_battle', effects[0])
+    page.addTargetValue('effect_map', effects[1])
 
 
 def process_pokemon_move_map(page: Page):
@@ -357,7 +355,7 @@ headers = {
         .addRequest('/wiki/宝可梦列表', tag='pokedex')
         .addRequest('/wiki/招式列表', tag='move_list')
         .setScheduler(fileCacheScheduler)
-        # .addPipeline(ConsolePipeline())
+        .addPipeline(ConsolePipeline())
         .addPipeline(jsonPipeline)
         .run())
 
@@ -370,6 +368,6 @@ headers = {
 (Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2)
         .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
         .setScheduler(fileCacheScheduler)
-        # .addPipeline(ConsolePipeline())
+        .addPipeline(ConsolePipeline())
         .addPipeline(jsonPipeline)
         .run())
