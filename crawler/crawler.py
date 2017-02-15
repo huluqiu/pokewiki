@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from gotyou.crawler import Crawler, Page, FileCacheScheduler, ConsolePipeline, Pipeline
+from gotyou.crawler import Crawler, Page, FileCacheScheduler, ConsolePipeline, Pipeline, JsonPipeline
 from logging.config import dictConfig
 import yaml
 import psycopg2
@@ -10,12 +10,6 @@ import os
 with open('logconf.yaml') as f:
     logconfig = yaml.load(f)
     dictConfig(logconfig)
-
-domain = 'http://www.pokemon.name'
-headers = {
-    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
-    'cookie': 'bdshare_firstime=1486483047635; wikiEditor-0-booklet-wikicode-page=tags; wikiEditor-0-booklet-characters2-page=hiragana; wikiEditor-0-booklet-symbols-page=punc; Hm_lvt_5d5b68f5aaae57bdebbe134a5acde926=1486483047; Hm_lpvt_5d5b68f5aaae57bdebbe134a5acde926=1486901302'
-}
 
 
 def textInXpath(node, xpath):
@@ -43,11 +37,11 @@ def process_pokedex(page: Page):
                 pokemons.append((num, name, pokemon_class, gen + 1))
     page.addTargetValue('pokemons', pokemons)
 
-    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"), tag='pokemon', headers=headers)
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[6]//a/attribute::href"), tag='pokemon', headers=headers)
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[1]//a/attribute::href"), tag='pokemon', headers=headers)
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[4]//a/attribute::href"), tag='pokemon', headers=headers)
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[2]/td[2]/ul/li[124]//a/attribute::href"), tag='pokemon', headers=headers)
+    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table/tr/td[2]//a/attribute::href"), tag='pokemon')
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[1]/td[2]/ul/li[6]//a/attribute::href"), tag='pokemon')
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[1]//a/attribute::href"), tag='pokemon')
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]/td[2]/ul/li[4]//a/attribute::href"), tag='pokemon')
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[2]/td[2]/ul/li[124]//a/attribute::href"), tag='pokemon')
 
 
 def process_pokemon(page: Page):
@@ -154,8 +148,8 @@ def process_ability_list(page: Page):
         v['name_en'] = table.xpath("tr/td[3]/text()")
         v['effect'] = table.xpath("tr/td[4]/text()")
         page.addTargetValue(str(i), v)
-    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability', headers=headers)
-    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability', headers=headers)
+    page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table//a/attribute::href"), tag='ability')
+    # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[1]/tr[3]//a/attribute::href"), tag='ability')
 
 
 def process_ability(page: Page):
@@ -187,14 +181,14 @@ def process_ability(page: Page):
 
 def process_move_list(page: Page):
     if page.tag == 'move_list':
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li[1]//a/attribute::href"), tag='move_type_list', headers=headers)
-        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list', headers=headers)
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li[1]//a/attribute::href"), tag='move_type_list')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/div[1]/ul/li//a/attribute::href"), tag='move_type_list')
     elif page.tag == 'move_type_list':
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move', headers=headers)
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move', headers=headers)
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move', headers=headers)
-        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move', headers=headers)
-        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[position()>1]/tr/td[1]//a/attribute::href"), tag='move', headers=headers)
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[2]/td[1]/a/attribute::href"), tag='move')
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[2]/tr[10]/td[1]/a/attribute::href"), tag='move')
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[38]/td[1]/a/attribute::href"), tag='move')
+        # page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[4]/tr[49]/td[1]/a/attribute::href"), tag='move')
+        page.addRequest(page.tree.xpath("//*[@id='mw-content-text']/table[position()>1]/tr/td[1]//a/attribute::href"), tag='move')
 
 
 def process_move(page: Page):
@@ -309,11 +303,16 @@ class PsycopgPipeline(Pipeline):
             self.con.commit()
 
 
-(Crawler(pageProcessor, domain=domain)
-        # .addRequest('/wiki/特性/按世代分类', tag='ability_list', headers=headers)
-        .addRequest('/wiki/宝可梦列表', tag='pokedex', headers=headers)
-        # .addRequest('/wiki/招式列表', tag='move_list', headers=headers)
+domain = 'http://www.pokemon.name'
+headers = {
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
+    'cookie': 'bdshare_firstime=1486483047635; wikiEditor-0-booklet-wikicode-page=tags; wikiEditor-0-booklet-characters2-page=hiragana; wikiEditor-0-booklet-symbols-page=punc; Hm_lvt_5d5b68f5aaae57bdebbe134a5acde926=1486483047; Hm_lpvt_5d5b68f5aaae57bdebbe134a5acde926=1486901302'
+}
+(Crawler(pageProcessor, domain=domain, headers=headers)
+        .addRequest('/wiki/特性/按世代分类', tag='ability_list')
+        .addRequest('/wiki/宝可梦列表', tag='pokedex')
+        .addRequest('/wiki/招式列表', tag='move_list')
         .setScheduler(FileCacheScheduler('.'))
         .addPipeline(ConsolePipeline())
-        # .addPipeline('jsons')
+        .addPipeline(JsonPipeline('jsons'))
         .run())
