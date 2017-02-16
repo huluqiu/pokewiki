@@ -7,7 +7,7 @@ import yaml
 import psycopg2
 import os
 
-debug = True
+debug = False
 
 with open('logconf.yaml') as f:
     logconfig = yaml.load(f)
@@ -111,13 +111,15 @@ def process_pokemon(page: Page):
     for i, child in enumerate(mw_content_text_node):
         if child.tag == 'h3' and child.xpath('string(.)') == '进化':
             evolution_table_index = i + 1
-    evolution_table = mw_content_text_node[evolution_table_index].xpath("tr/td/table")[0]
-    poke_init_name = evolution_table.xpath("tr/td[1]")[0].xpath('string(.)')
-    td2 = evolution_table.xpath("tr/td[2]")
-    if len(td2) == 0:
-        evolutions = []
-    else:
-        evolutions = get_evolution(td2[0][0])
+        elif child.tag == 'h2' and child.xpath('string(.)') == '形态与进化' and mw_content_text_node[i + 1].tag == 'table':
+            evolution_table_index = i + 1
+    evolutions = []
+    if evolution_table_index != -1:
+        evolution_table = mw_content_text_node[evolution_table_index].xpath("tr/td/table")[0]
+        poke_init_name = evolution_table.xpath("tr/td[1]")[0].xpath('string(.)')
+        td2 = evolution_table.xpath("tr/td[2]")
+        if len(td2) > 0:
+            evolutions = get_evolution(td2[0][0])
     pokemon_evolution = (poke_init_name, evolutions)
     page.addTargetValue('pokemon_evolution', pokemon_evolution)
 
@@ -126,8 +128,14 @@ def get_evolution(table):
     evolutions = []
     for tr in table:
         tds = tr.xpath("td")
-        way = tds[0][1].xpath('string(.)')
-        condition = tds[0][2].xpath('string(.)')
+        way_node = tds[0].xpath('div[1]')
+        way = ''
+        condition = ''
+        if way_node:
+            way = way_node[0].xpath('string(.)')
+        condition_node = tds[0].xpath('div[2]')
+        if condition_node:
+            condition = condition_node[0].xpath('string(.)')
         evolution_name = tds[1].xpath('string(.)')
         next_evolution_table = tr.xpath('td[3]/table')
         next_evolutions = []
@@ -176,21 +184,22 @@ def process_ability(page: Page):
 def get_effect(node):
     node = list(filter(lambda n: n.tag in 'h2,h3,dl,p', node))
     h2_sep = node_split_after(node, 'h2')
-    h2_sep = list(filter(lambda n: '效果' in n[0].xpath('string(.)'), h2_sep))
+    h2_sep = list(filter(lambda n: n[0].xpath('string(.)') in '战斗效果,对战效果,地图效果,冒险效果', h2_sep))
     effects = []
     for h2_and_sub in h2_sep:
         h3_sep = node_split_after(h2_and_sub[1:], 'h3')
         effect = ''
-        if h3_sep[0][0].tag != 'h3':
+        if h3_sep and h3_sep[0][0].tag != 'h3':
             for node in h3_sep[0]:
                 effect += node.xpath('string(.)')
         else:
             nodes = list(filter(lambda n: '世代' in n[0].xpath('string(.)'), h3_sep))
-            nodes = nodes[-1]
-            for node in nodes[1:]:
-                effect += node.xpath('string(.)')
+            if nodes:
+                nodes = nodes[-1]
+                for node in nodes[1:]:
+                    effect += node.xpath('string(.)')
         effects.append(effect)
-    if len(effects) == 1:
+    for i in range(2 - len(effects)):
         effects.append('')
     return effects
 
@@ -336,7 +345,6 @@ class PsycopgPipeline(Pipeline):
 
 
 jsonPipeline = JsonPipeline('jsons')
-fileCacheScheduler = FileCacheScheduler('.')
 
 domain = 'http://www.pokemon.name'
 headers = {
@@ -350,12 +358,12 @@ headers = {
     'Upgrade-Insecure-Requests': '1',
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
 }
-(Crawler(pageProcessor_pokename, domain=domain, headers=headers, delay=2)
+(Crawler(pageProcessor_pokename, domain=domain, headers=headers, delay=2, timeout=30)
         .addRequest('/wiki/特性/按世代分类', tag='ability_list')
         .addRequest('/wiki/宝可梦列表', tag='pokedex')
         .addRequest('/wiki/招式列表', tag='move_list')
-        .setScheduler(fileCacheScheduler)
-        .addPipeline(ConsolePipeline())
+        .setScheduler(FileCacheScheduler('name_poke.cache'))
+        # .addPipeline(ConsolePipeline())
         .addPipeline(jsonPipeline)
         .run())
 
@@ -365,9 +373,9 @@ headers = {
     'Cache-Control': 'max-age=0',
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8'
 }
-(Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2)
+(Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2, timeout=30)
         .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
-        .setScheduler(fileCacheScheduler)
-        .addPipeline(ConsolePipeline())
+        .setScheduler(FileCacheScheduler('52_poke.cache'))
+        # .addPipeline(ConsolePipeline())
         .addPipeline(jsonPipeline)
         .run())

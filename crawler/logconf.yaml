@@ -8,10 +8,15 @@ handlers:
     level: INFO
     formatter: simple
     stream: ext://sys.stdout
+  file:
+    class: logging.FileHandler
+    level: ERROR
+    formatter: simple
+    filename: error.log
 loggers:
   gotyou:
     level: INFO
-    handlers: [console]
+    handlers: [console, file]
     propagate: no
 root:
   level: INFO

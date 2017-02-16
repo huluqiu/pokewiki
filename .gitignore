@@ -4,3 +4,4 @@ __pycache__/
 pokemon.db
 jsons/
 .requests.cache
+error.log
