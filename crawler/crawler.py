@@ -4,7 +4,6 @@
 from gotyou.crawler import Crawler, Page, FileCacheScheduler, ConsolePipeline, Pipeline, JsonPipeline
 from logging.config import dictConfig
 import yaml
-import psycopg2
 import os
 
 debug = False
@@ -320,28 +319,29 @@ def pageProcessor_52poke(page: Page):
             page.addTargetValue('pokemon_img', info_table.xpath("tr/td/table/tr[2]//img/attribute::data-url"))
         else:
             page.addTargetValue('pokemon_img', info_table.xpath("tr[2]//img/attribute::data-url"))
-
-
-class PsycopgPipeline(Pipeline):
-
-    """Docstring for PsycopgPipeline. """
-
-    def __init__(self, dbname):
-        Pipeline.__init__(self)
-
-        self.con = psycopg2.connect(dbname=dbname)
-        self.cursor = self.con.cursor()
-
-    def __del__(self):
-        if self.con.get_transaction_status() != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
-            self.con.commit()
-
-        self.cursor.close()
-        self.con.close()
-
-    def process(self, page: Page):
-        if self.con.get_transaction_status() != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
-            self.con.commit()
+    elif page.tag == 'move_list_52':
+        tables = page.tree.xpath("//*[@id='mw-content-text']/table")
+        tables = tables[1:-1]
+        moves = []
+        for i, table in enumerate(tables):
+            for tr in table[1:]:
+                num = tr[0].xpath('string(.)')
+                name = tr[1].xpath('string(.)')
+                name_jp = tr[2].xpath('string(.)')
+                name_en = tr[3].xpath('string(.)')
+                gen = i + 1
+                moves.append((num, name, name_jp, name_en, gen))
+        page.addTargetValue('move_list', moves)
+    elif page.tag == 'ability_list_52':
+        tables = page.tree.xpath("//*[@id='mw-content-text']/table")
+        abilities = []
+        for i, table in enumerate(tables):
+            for tr in table[1:]:
+                num = tr[0].xpath('string(.)')
+                name = tr[1].xpath('string(.)')
+                gen = i + 3
+                abilities.append((num, name, gen))
+        page.addTargetValue('abilities', abilities)
 
 
 jsonPipeline = JsonPipeline('jsons')
@@ -375,6 +375,8 @@ headers = {
 }
 (Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2, timeout=30)
         .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
+        .addRequest('/wiki/招式列表', tag='move_list_52')
+        .addRequest('/wiki/特性列表', tag='ability_list_52')
         .setScheduler(FileCacheScheduler('52_poke.cache'))
         # .addPipeline(ConsolePipeline())
         .addPipeline(jsonPipeline)
