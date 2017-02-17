@@ -3,5 +3,6 @@ __pycache__/
 
 pokemon.db
 jsons/
-.requests.cache
 error.log
+52_poke.cache
+name_poke.cache

@@ -112,6 +112,7 @@ def process_pokemon(page: Page):
             evolution_table_index = i + 1
         elif child.tag == 'h2' and child.xpath('string(.)') == '形态与进化' and mw_content_text_node[i + 1].tag == 'table':
             evolution_table_index = i + 1
+    poke_init_name = ''
     evolutions = []
     if evolution_table_index != -1:
         evolution_table = mw_content_text_node[evolution_table_index].xpath("tr/td/table")[0]
