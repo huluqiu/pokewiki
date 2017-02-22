@@ -1,7 +1,8 @@
 import os
 import gotyou
 import re
-
+import psycopg2
+from psycopg2.extensions import adapt, register_adapter, AsIs
 
 error_name_map = {
     '可拉可拉': '卡拉卡拉',
@@ -116,6 +117,10 @@ for (num, name, name_jp, name_en, gen) in move_list:
     name = re_v.match(name).group(1)
     name_jp = re_v.match(name_jp).group(1)
     name_en = re_v.match(name_en).group(1)
+    if gen == 7:
+        gen = 6
+    elif gen == 8:
+        gen = 7
     move_name_num_map[name] = (num, name, name_jp, name_en, gen)
     move_num_name_map[num] = name
 
@@ -166,9 +171,9 @@ for pokemon in pokemon_objs:
         pokemon_forms.append((num, form_name, types, height, weight, stats, stats_get, is_normal))
 
         for normal_ability in abilit_dic['normal']:
-            pokemon_ability_map.append((num, form_name, ability_name_num_map[normal_ability], False))
+            pokemon_ability_map.append((num, ability_name_num_map[normal_ability][0], form_name, False))
         if abilit_dic['hidden'] and abilit_dic['hidden'] not in abilit_dic['normal']:
-            pokemon_ability_map.append((num, form_name, ability_name_num_map[abilit_dic['hidden']], True))
+            pokemon_ability_map.append((num, ability_name_num_map[abilit_dic['hidden']][0], form_name, True))
 
     init_name, evolutions = pokemon['pokemon_evolution']
     add_evolution(pokemon_evolutions, init_name, evolutions)
@@ -191,7 +196,7 @@ ability_objs = list(gotyou.jsonload(os.path.join(path, filename)) for filename i
 for ability in ability_objs:
     if ability['name'] in ability_name_num_map:
         num, name, name_jp, name_en, gen, effect = ability_name_num_map[ability['name']]
-        abilities.append((num, name, name_jp, name_en, gen, effect, ability['effect_battle'], ability['effect_map']))
+        abilities.append((num, name, name_jp, name_en, effect, ability['effect_battle'], ability['effect_map'], gen))
 abilities = sorted(abilities, key=lambda n: n[0])
 
 
@@ -213,15 +218,76 @@ for move in move_objs:
         accuracy = int(accuracy)
     else:
         accuracy = -1
+    pp = move['pp']
+    if pp:
+        pp = int(pp)
+    else:
+        pp = 1
     priority = move['priority'].replace('\n', '')
+    if priority:
+        try:
+            priority = int(priority)
+        except ValueError:
+            priority = 0
+    else:
+        priority = 0
     z_stone = move['z_stone'].replace('\n', '')
+    z_move = move['z_move'].replace('\n', '')
     z_power = move['z_power'].replace('\n', '')
-    moves.append((num, name, name_jp, name_en, move['type'], move['kind'], power, accuracy, move['pp'], priority, gen, move['description'], move['effect_battle'], move['effect_map']))
+    moves.append((num, name, name_jp, name_en, move['type'], move['kind'], power, accuracy, pp, move['description'], move['effect_battle'], move['effect_map'], priority, gen, z_stone, z_move, z_power))
 moves = unique(moves)
 moves = sorted(moves, key=lambda n: n[0])
 i = 0
 while i < len(move_objs):
-    num, name, name_jp, name_en, move['type'], move['kind'], power, accuracy, move['pp'], priority, gen, move['description'], move['effect_battle'], move['effect_map'] = moves[i]
+    num = moves[i][0]
     if num != i + 1:
-        moves[i] = (i + 1, name, name_jp, name_en, move['type'], move['kind'], power, accuracy, move['pp'], priority, gen, move['description'], move['effect_battle'], move['effect_map'])
+        temp = list(moves[i])
+        temp[0] = i + 1
+        moves[i] = tuple(temp)
     i += 1
+
+
+path = './jsons/pokemon_move_map'
+map_objs = list(gotyou.jsonload(os.path.join(path, filename)) for filename in os.listdir(path))
+for obj in map_objs:
+    poke_num = int(obj['num'])
+    for maps in obj['pokemon_move_map']:
+        way, m = maps
+        for move_info in m:
+            condition, name, form = move_info
+            if name in move_error_name_map:
+                name = move_error_name_map[name]
+            move_num = move_name_num_map[name][0]
+            pokemon_move_map.append((poke_num, move_num, way, condition, form))
+pokemon_move_map = sorted(pokemon_move_map, key=lambda n: n[0])
+
+# 入库
+con = psycopg2.connect(dbname='pokewiki', user='alezai')
+cur = con.cursor()
+s = '''insert into pokemon (num, name, name_jp, name_en, class, category,
+                egg_groups, egg_step, male_rate, female_rate, catch,
+                happiness, expto100, gen) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
+for pokemon in pokemons:
+    cur.execute(s, pokemon)
+s = '''INSERT INTO move (num, name, name_jp, name_en, type, kind, power, accuracy, pp, description, effect_battle, effect_map, priority, gen, z_stone, z_move, z_power)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
+for move in moves:
+    cur.execute(s, move)
+s = '''INSERT INTO ability (num, name, name_jp, name_en, effect, effect_battle, effect_map, gen) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);'''
+for ability in abilities:
+    cur.execute(s, ability)
+s = '''INSERT INTO pokemon_form (num, form, type, height, weight, stats, stats_get, is_normal) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);'''
+for form in pokemon_forms:
+    cur.execute(s, form)
+s = '''INSERT INTO pokemon_ability_map (poke_num, ability_num, form, is_hidden) VALUES (%s, %s, %s, %s);'''
+for v in pokemon_ability_map:
+    cur.execute(s, v)
+s = '''INSERT INTO pokemon_move_map (poke_num, move_num, way, condition, form) VALUES (%s, %s, %s, %s, %s);'''
+for v in pokemon_move_map:
+    cur.execute(s, v)
+s = '''INSERT INTO pokemon_evolution_map (num, evolution_num, way, condition) VALUES (%s, %s, %s, %s);'''
+for v in pokemon_evolutions:
+    cur.execute(s, v)
+con.commit()
+cur.close()
+con.close()
