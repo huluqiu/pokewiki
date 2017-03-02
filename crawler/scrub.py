@@ -2,7 +2,6 @@ import os
 import gotyou
 import re
 import psycopg2
-from psycopg2.extensions import adapt, register_adapter, AsIs
 
 error_name_map = {
     '可拉可拉': '卡拉卡拉',
