@@ -6,3 +6,5 @@ jsons/
 error.log
 52_poke.cache
 name_poke.cache
+
+.python-version
