@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from gotyou.crawler import Crawler, Page, FileCacheScheduler, ConsolePipeline, Pipeline, JsonPipeline
+from gotyou.crawler import Crawler, Page, FileCacheScheduler, JsonPipeline
 from logging.config import dictConfig
 import yaml
 import os
@@ -290,6 +290,28 @@ def process_pokemon_move_map(page: Page):
     page.addTargetValue('pokemon_move_map', pokemon_move_map)
 
 
+def process_egg_groups(page: Page):
+    if page.tag != 'egg_groups':
+        return
+
+    egg_groups = []
+    table = page.tree.xpath("//*[@id='mw-content-text']/table[1]")[0]
+    for node in table[1:]:
+        name = node[0].xpath('string(.)')
+        description = node[2].xpath('string(.)')
+        egg_groups.append((name, description))
+    page.addTargetValue('egg_groups', egg_groups)
+
+
+def process_types(page: Page):
+    if page.tag != 'types':
+        return
+
+    table = page.tree.xpath("//*[@id='mw-content-text']/table[1]")[0][0]
+    types = [node.xpath('string(.)') for node in table]
+    page.addTargetValue('types', types)
+
+
 def pageProcessor_pokename(page: Page):
     process_pokedex(page)
     process_pokemon(page)
@@ -298,6 +320,8 @@ def pageProcessor_pokename(page: Page):
     process_ability(page)
     process_move_list(page)
     process_move(page)
+    process_egg_groups(page)
+    process_types(page)
 
 
 def pageProcessor_52poke(page: Page):
@@ -360,13 +384,14 @@ headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
 }
 (Crawler(pageProcessor_pokename, domain=domain, headers=headers, delay=2, timeout=30)
-        .addRequest('/wiki/特性/按世代分类', tag='ability_list')
-        .addRequest('/wiki/宝可梦列表', tag='pokedex')
-        .addRequest('/wiki/招式列表', tag='move_list')
-        .setScheduler(FileCacheScheduler('name_poke.cache'))
-        # .addPipeline(ConsolePipeline())
-        .addPipeline(jsonPipeline)
-        .run())
+    .addRequest('/wiki/特性/按世代分类', tag='ability_list')
+    .addRequest('/wiki/宝可梦列表', tag='pokedex')
+    .addRequest('/wiki/招式列表', tag='move_list')
+    .addRequest('/wiki/生蛋分组', tag='egg_groups')
+    .addRequest('/wiki/属性', tag='types')
+    .setScheduler(FileCacheScheduler('name_poke.cache'))
+    .addPipeline(jsonPipeline)
+    .run())
 
 domain = 'https://wiki.52poke.com'
 headers = {
@@ -375,10 +400,9 @@ headers = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8'
 }
 (Crawler(pageProcessor_52poke, domain=domain, headers=headers, delay=2, timeout=30)
-        .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
-        .addRequest('/wiki/招式列表', tag='move_list_52')
-        .addRequest('/wiki/特性列表', tag='ability_list_52')
-        .setScheduler(FileCacheScheduler('52_poke.cache'))
-        # .addPipeline(ConsolePipeline())
-        .addPipeline(jsonPipeline)
-        .run())
+    .addRequest('/wiki/宝可梦列表（按全国图鉴编号）/简单版', tag='pokedex_52')
+    .addRequest('/wiki/招式列表', tag='move_list_52')
+    .addRequest('/wiki/特性列表', tag='ability_list_52')
+    .setScheduler(FileCacheScheduler('52_poke.cache'))
+    .addPipeline(jsonPipeline)
+    .run())
