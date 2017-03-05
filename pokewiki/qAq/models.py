@@ -3,23 +3,24 @@ from django.contrib.postgres.fields import JSONField
 
 
 class Gen(models.Model):
-    num = models.SmallIntegerField(primary_key=True)
+    id = models.SmallIntegerField(primary_key=True)
 
 
 class PokemonClass(models.Model):
-    name = models.CharField(max_length=10)
+    name = models.CharField(max_length=10, primary_key=True)
 
 
 class EggGroup(models.Model):
-    name = models.CharField(max_length=10)
+    name = models.CharField(max_length=10, primary_key=True)
+    description = models.TextField(default='')
 
 
 class Type(models.Model):
-    name = models.CharField(max_length=5)
+    name = models.CharField(max_length=5, primary_key=True)
 
 
 class Kind(models.Model):
-    name = models.CharField(max_length=5)
+    name = models.CharField(max_length=5, primary_key=True)
 
 
 class Pokemon(models.Model):
@@ -42,7 +43,6 @@ class Pokemon(models.Model):
         through='Evolution',
         symmetrical=False
     )
-    abilities = models.ManyToManyField('Ability', through='PokemonAbility')
     moves = models.ManyToManyField('Move', through='PokemonMove')
 
 
@@ -58,6 +58,10 @@ class PokemonForm(models.Model):
     weight = models.FloatField()
     stats = JSONField()
     stats_get = JSONField()
+    abilities = models.ManyToManyField('Ability', through='PokemonAbility')
+
+    class Meta:
+        unique_together = (('pokemon', 'form'))
 
 
 class Evolution(models.Model):
@@ -87,15 +91,14 @@ class Ability(models.Model):
 
 
 class PokemonAbility(models.Model):
-    pokemon = models.ForeignKey(
-        Pokemon,
+    pokemon_form = models.ForeignKey(
+        PokemonForm,
         on_delete=models.CASCADE,
     )
     ability = models.ForeignKey(
         Ability,
         on_delete=models.CASCADE,
     )
-    form = models.CharField(max_length=20)
     is_hidden = models.BooleanField()
 
 
@@ -130,4 +133,3 @@ class PokemonMove(models.Model):
     )
     way = models.CharField(max_length=20)
     condition = models.CharField(max_length=10)
-    form = models.CharField(max_length=20)

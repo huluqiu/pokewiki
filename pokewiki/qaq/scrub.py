@@ -68,7 +68,6 @@ _pokemon_forms = []
 _pokemon_evolutions = []
 _abilities = []
 _pokemon_ability_map = []
-_moves = []
 _pokemon_move_map = []
 
 
@@ -89,6 +88,8 @@ def _init_map():
         _ability_num_name_map[num] = name
 
     move_list = gotyou.jsonload(os.path.join(_jsonpath, 'move_list_52/_wiki_招式列表.json'))['move_list']
+    pre_name = ''
+    index = 1
     for (num, name, name_jp, name_en, gen) in move_list:
         re_v = re.compile(r' (.+)\n')
         num = int(re_v.match(num).group(1))
@@ -99,8 +100,13 @@ def _init_map():
             gen = 6
         elif gen == 8:
             gen = 7
-        _move_name_num_map[name] = (num, name, name_jp, name_en, gen)
-        _move_num_name_map[num] = name
+        if name == pre_name:
+            continue
+        else:
+            pre_name = name
+            _move_name_num_map[name] = (index, name, name_jp, name_en, gen)
+            _move_num_name_map[index] = name
+            index += 1
 
 
 _init_map()
@@ -198,7 +204,7 @@ def get_types():
 
 
 def get_kinds():
-    return ['物理', '特殊', '变化']
+    return ['物理', '特殊', '变化', 'z']
 
 
 def get_pokemons():
@@ -255,6 +261,9 @@ def get_moves():
         if move['name'] in _move_error_name_map:
             move['name'] = _move_error_name_map[move['name']]
         num, name, name_jp, name_en, gen = _move_name_num_map[move['name']]
+        kind = move['kind']
+        if kind == '':
+            kind = 'z'
         power = move['power'].replace('\n', '').replace('--', '')
         if power == '变动':
             power = 0
@@ -283,17 +292,8 @@ def get_moves():
         z_stone = move['z_stone'].replace('\n', '')
         z_move = move['z_move'].replace('\n', '')
         z_power = move['z_power'].replace('\n', '')
-        moves.append((num, name, name_jp, name_en, move['type'], move['kind'], power, accuracy, pp, move['description'], move['effect_battle'], move['effect_map'], priority, gen, z_stone, z_move, z_power))
-    moves = set(moves)
+        moves.append((num, name, name_jp, name_en, move['type'], kind, power, accuracy, pp, move['description'], move['effect_battle'], move['effect_map'], priority, gen, z_stone, z_move, z_power))
     moves = sorted(moves, key=lambda n: n[0])
-    i = 0
-    while i < len(move_objs):
-        num = moves[i][0]
-        if num != i + 1:
-            temp = list(moves[i])
-            temp[0] = i + 1
-            moves[i] = tuple(temp)
-        i += 1
     return moves
 
 
