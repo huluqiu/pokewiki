@@ -1,4 +1,5 @@
 Django==1.10.6
+django-filter==1.0.1
 djangorestframework==3.5.4
 flake8==3.3.0
 gotyou==0.1.3
