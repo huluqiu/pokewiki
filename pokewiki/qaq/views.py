@@ -1,6 +1,5 @@
 from rest_framework import viewsets
-from qaq.models import Pokemon, EggGroup
-from qaq import serializers
+from qaq import models, serializers
 
 
 class MultiSerializerViewSetMixin(object):
@@ -12,7 +11,7 @@ class MultiSerializerViewSetMixin(object):
 
 
 class PokemonViewSet(MultiSerializerViewSetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = Pokemon.objects.all()
+    queryset = models.Pokemon.objects.all()
     serializer_class = serializers.PokemonListSerializer
     serializer_action_classes = {
         'list': serializers.PokemonListSerializer,
@@ -21,5 +20,5 @@ class PokemonViewSet(MultiSerializerViewSetMixin, viewsets.ReadOnlyModelViewSet)
 
 
 class EggGroupViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = EggGroup.objects.all()
+    queryset = models.EggGroup.objects.all()
     serializer_class = serializers.EggGroupSerializer

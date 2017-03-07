@@ -124,5 +124,5 @@ STATIC_URL = '/static/'
 
 # Rest
 REST_FRAMEWORK = {
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
 }
