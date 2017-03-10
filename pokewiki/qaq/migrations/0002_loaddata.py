@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from qaq import scrub
+from qaq.core import scrub
 
 
 def load_gen(apps, schema_editor):

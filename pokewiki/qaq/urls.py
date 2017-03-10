@@ -7,5 +7,6 @@ router.register(r'pokemons', views.PokemonViewSet)
 router.register(r'egggroups', views.EggGroupViewSet)
 
 urlpatterns = [
-    url(r'^', include(router.urls))
+    url(r'^', include(router.urls)),
+    url(r'^qaq$', views.qaq),
 ]

@@ -1,6 +1,30 @@
-o: pokemon, move, ability
+s: pokemon, move, ability
 p: ....
+v: ....
 r: pokemon-move, pokemon-ability, pokemon-pokemon(evolution)
+
+问题
+
+(s, p, ?)
+皮卡丘的英文名?
+xspk     xp
+Pokemon.objects.get(name='皮卡丘').name_en
+
+(?, p, v)
+英文名为Pikachu的宝可梦是?
+ xp         xv      xopk
+queryset = Pokemon.objects.filter(name_en='Pikachu')
+
+哪个技能威力为80?
+    xomv xp   xv
+queryset = Move.objects.filter(power=80)
+
+(s, r, ?)
+
+(?, r, s)
+
+{
+}
 
 xo
 xopk

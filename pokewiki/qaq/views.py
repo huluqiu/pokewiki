@@ -1,4 +1,6 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from qaq import models, serializers
 
 
@@ -22,3 +24,11 @@ class PokemonViewSet(MultiSerializerViewSetMixin, viewsets.ReadOnlyModelViewSet)
 class EggGroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.EggGroup.objects.all()
     serializer_class = serializers.EggGroupSerializer
+
+
+@api_view()
+def qaq(request):
+    question = request.query_params.get('question', None)
+    if question is not None:
+        return Response({'question': question})
+    return Response()
