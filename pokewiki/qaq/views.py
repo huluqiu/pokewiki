@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from qaq import models, serializers
+from qaq.core import question
 
 
 class MultiSerializerViewSetMixin(object):
@@ -28,7 +29,21 @@ class EggGroupViewSet(viewsets.ReadOnlyModelViewSet):
 
 @api_view()
 def qaq(request):
-    question = request.query_params.get('question', None)
-    if question is not None:
-        return Response({'question': question})
-    return Response()
+    questions = []
+    rs = []
+    with open('./pokewiki/qaq/core/questions', 'r') as f:
+        questions = f.readlines()
+        questions = list(map(lambda n: n.strip(), questions))
+
+    for q in questions:
+        cuts = question.preprocess(q)
+        rs.append(question.infoextract(cuts))
+
+    return Response(rs)
+
+    # q = request.query_params.get('question', None)
+    # if q is not None:
+        # cuts = question.preprocess(q)
+        # rs = question.infoextract(cuts)
+        # return Response({'question': rs})
+    # return Response()

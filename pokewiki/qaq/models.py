@@ -50,6 +50,7 @@ class PokemonForm(models.Model):
     pokemon = models.ForeignKey(
         Pokemon,
         on_delete=models.CASCADE,
+        related_name='pokemonforms',
     )
     form = models.CharField(max_length=20)
     is_normal = models.BooleanField()
@@ -133,3 +134,8 @@ class PokemonMove(models.Model):
     )
     way = models.CharField(max_length=20)
     condition = models.CharField(max_length=10)
+
+
+class WordDic(models.Model):
+    word = models.CharField(max_length=10, primary_key=True)
+    tag = models.CharField(max_length=10)
