@@ -1,72 +1,49 @@
-Pokemon:
-  id: 'Pokemon'
-  cn: ['宝可梦', '精灵']
+app: 'qaq'
+
+gen: &gen
+  cn: ['世代']
+  index: 'id'
+
+pokemonclass: &pokemonclass
+  cn: ['分类']
+  index: 'name'
+
+egggroup: &egggroup
+  cn: ['蛋组']
+  index: 'name'
+
+type: &type
+  id: 'Type'
+  cn: ['属性']
+  index: 'name'
+
+kind: &kind
+  id: 'Kind'
+  cn: ['类型']
+  index: 'name'
+
+stats: &stats
   attribute:
-    id: ['序号', '编号']
-    name: ['名字']
-    name_jp: ['日文名']
-    name_en: ['英文名']
-    Gen:
-      id: 'gen'
-      cn: ['世代']
-      attribute:
-    category: ['分类']
-    egg_step: ['孵化周期', '孵蛋步数', '孵']
-    EggGroup:
-      id: 'egg_groups'
-      cn: ['蛋组']
-      attribute:
-    func_gender: ['性别', '性别比例']
-    catch: ['捕获度', '捕获率']
-    happiness: ['亲密度', '初始亲密度']
-    expto100: ['经验']
-    PokemonForm:
-      id: 'pokemonforms'
-      cn: ['形态']
-      attribute:
-        height: ['身高']
-        weight: ['体重']
-        stats: ['种族值']
-        stats_get: ['']
-        Type:
-          id: 'types'
-          cn: ['属性']
-          attribute:
-Ability:
-  id: 'Ability'
-  cn: ['特性']
-  attribute:
-    id: ['序号', '编号']
-    name: ['名字']
-    name_jp: ['日文名']
-    name_en: ['英文名']
-    Gen:
-      id: 'gen'
-      cn: ['世代']
-      attribute:
-    effect: ['效果']
-    effect_battle: ['战斗效果']
-    effect_map: ['地图效果']
-Move:
+    hp: ['血量']
+    attack: ['攻击']
+    defense: ['防御']
+    sp_attack: ['特攻']
+    sp_defense: ['特防']
+    speed: ['速度']
+
+move: &move
   id: 'Move'
+  entity: true
   cn: ['技能', '招式']
+  index: 'name'
   attribute:
     id: ['序号', '编号']
+    gen: *gen
     name: ['名字']
     name_jp: ['日文名']
     name_en: ['英文名']
-    Gen:
-      id: 'gen'
-      cn: ['世代']
-      attribute:
-    Type:
-      id: 'type'
-      cn: ['属性']
-      attribute:
-    Kind:
-      id: 'kind'
-      cn: ['类型']
-      attribute:
+    type: *type
+    kind: *kind
     power: ['威力']
     accuracy: ['命中率', '命中']
     pp: ['pp']
@@ -77,21 +54,55 @@ Move:
     z_stone: ['z纯晶']
     z_move: ['z招式']
     z_power: ['z威力']
-r_evolution:
-  id: 'Evolution'
-  cn: ['进化']
-  from: 'Pokemon'
-  to: 'Pokemon'
-  reversible: false
-r_learn:
-  id: 'PokemonMove'
-  cn: ['学', '学会']
-  from: 'Pokemon'
-  to: 'Move'
-  reversible: false
-r_pokemon_ability:
-  id: 'PokemonAbility'
-  cn: []
-  from: 'Pokemon'
-  to: 'Ability'
-  reversible: false
+
+ability: &ability
+  id: 'Ability'
+  entity: true
+  cn: ['特性']
+  index: 'name'
+  attribute:
+    id: ['序号', '编号']
+    gen: *gen
+    name: ['名字']
+    name_jp: ['日文名']
+    name_en: ['英文名']
+    effect: ['效果']
+    effect_battle: ['战斗效果']
+    effect_map: ['地图效果']
+
+pokemon:
+  id: 'Pokemon'
+  entity: true
+  cn: ['宝可梦', '精灵']
+  index: 'name'
+  attribute:
+    id: ['序号', '编号']
+    gen: *gen
+    pokemon_class: *pokemonclass
+    name: ['名字']
+    name_jp: ['日文名']
+    name_en: ['英文名']
+    category: ['种类']
+    egg_step: ['孵化周期', '孵蛋步数', '孵']
+    egg_groups: *egggroup
+    func_gender: ['性别', '性别比例']
+    catch: ['捕获度', '捕获率']
+    happiness: ['亲密度', '初始亲密度']
+    expto100: ['经验']
+    forms:
+      cn: ['形态']
+      index: 'name'
+      attribute:
+        types: *type
+        height: ['身高']
+        weight: ['体重']
+        func_stats:
+          cn: ['种族值']
+          <<: *stats
+        func_stats_get:
+          cn: ['努力值']
+          <<: *stats
+        abilities: *ability
+    moves: *move
+    evolutions:
+    be_evolutions:

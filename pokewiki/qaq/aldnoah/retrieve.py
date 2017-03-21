@@ -20,14 +20,14 @@ class DjangoRetrieve(Retrieve):
     def __init__(self):
         """TODO: to be defined1. """
         Retrieve.__init__(self)
-        self.relation_map = {
-            Query.Relation.Equal: '',
-            Query.Relation.Great: '__gt',
-            Query.Relation.GreatTE: '__gte',
-            Query.Relation.Less: '__lt',
-            Query.Relation.LessTE: '__lte',
-            Query.Relation.Contain: '__contains',
-            Query.Relation.In: '__in',
+        self.sign_map = {
+            Query.Sign.Equal: '',
+            Query.Sign.Great: '__gt',
+            Query.Sign.GreatTE: '__gte',
+            Query.Sign.Less: '__lt',
+            Query.Sign.LessTE: '__lte',
+            Query.Sign.Contain: '__contains',
+            Query.Sign.In: '__in',
         }
 
     def retrieve(self, query: Query):
@@ -38,9 +38,9 @@ class DjangoRetrieve(Retrieve):
         queryset = None
         for attribue, relate, value in query.conditions:
             negative = relate.name.startswith('Not')
-            relate = Query.Relation[relate.name.replace('Not', '')]
-            if relate in self.relation_map:
-                d = {attribue + self.relation_map[relate]: value}
+            relate = Query.Sign[relate.name.replace('Not', '')]
+            if relate in self.sign_map:
+                d = {attribue + self.sign_map[relate]: value}
                 if negative:
                     queryset = md.objects.exclude(**d)
                 else:

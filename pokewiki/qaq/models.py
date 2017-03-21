@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import ArrayField
 
 
 class Gen(models.Model):
@@ -23,16 +23,36 @@ class Kind(models.Model):
     name = models.CharField(max_length=5, primary_key=True)
 
 
+class Stats(models.Model):
+    hp = models.SmallIntegerField()
+    attack = models.SmallIntegerField()
+    defense = models.SmallIntegerField()
+    sp_attack = models.SmallIntegerField()
+    sp_defense = models.SmallIntegerField()
+    speed = models.SmallIntegerField()
+
+
 class Pokemon(models.Model):
     id = models.SmallIntegerField(primary_key=True)
-    gen = models.ForeignKey(Gen, on_delete=models.CASCADE)
-    pokemon_class = models.ForeignKey(PokemonClass, on_delete=models.CASCADE)
+    gen = models.ForeignKey(
+        Gen,
+        on_delete=models.CASCADE,
+        related_name='pokemons'
+    )
+    pokemon_class = models.ForeignKey(
+        PokemonClass,
+        on_delete=models.CASCADE,
+        related_name='pokemons'
+    )
     name = models.CharField(max_length=10)
     name_jp = models.CharField(max_length=10)
     name_en = models.CharField(max_length=20)
     category = models.CharField(max_length=20)
     egg_step = models.SmallIntegerField()
-    egg_groups = models.ManyToManyField(EggGroup)
+    egg_groups = models.ManyToManyField(
+        EggGroup,
+        related_name='pokemons'
+    )
     male_rate = models.FloatField()
     female_rate = models.FloatField()
     catch = models.SmallIntegerField()
@@ -41,25 +61,45 @@ class Pokemon(models.Model):
     evolutions = models.ManyToManyField(
         'self',
         through='Evolution',
-        symmetrical=False
+        symmetrical=False,
+        related_name='be_evolutions'
     )
-    moves = models.ManyToManyField('Move', through='PokemonMove')
+    moves = models.ManyToManyField(
+        'Move',
+        through='PokemonMove',
+        related_name='pokemons'
+    )
 
 
 class PokemonForm(models.Model):
     pokemon = models.ForeignKey(
         Pokemon,
         on_delete=models.CASCADE,
-        related_name='pokemonforms',
+        related_name='forms',
     )
-    form = models.CharField(max_length=20)
+    name = models.CharField(max_length=20)
     is_normal = models.BooleanField()
-    types = models.ManyToManyField(Type)
+    types = models.ManyToManyField(
+        Type,
+        'forms'
+    )
     height = models.FloatField()
     weight = models.FloatField()
-    stats = JSONField()
-    stats_get = JSONField()
-    abilities = models.ManyToManyField('Ability', through='PokemonAbility')
+    stats = models.ForeignKey(
+        Stats,
+        on_delete=models.CASCADE,
+        related_name='form'
+    )
+    stats_get = models.ForeignKey(
+        Stats,
+        on_delete=models.CASCADE,
+        related_name='form_get'
+    )
+    abilities = models.ManyToManyField(
+        'Ability',
+        through='PokemonAbility',
+        related_name='forms'
+    )
 
     class Meta:
         unique_together = (('pokemon', 'form'))
@@ -82,7 +122,11 @@ class Evolution(models.Model):
 
 class Ability(models.Model):
     id = models.SmallIntegerField(primary_key=True)
-    gen = models.ForeignKey(Gen, on_delete=models.CASCADE)
+    gen = models.ForeignKey(
+        Gen,
+        on_delete=models.CASCADE,
+        related_name='abilities'
+    )
     name = models.CharField(max_length=10)
     name_jp = models.CharField(max_length=10)
     name_en = models.CharField(max_length=20)
@@ -105,12 +149,24 @@ class PokemonAbility(models.Model):
 
 class Move(models.Model):
     id = models.SmallIntegerField(primary_key=True)
-    gen = models.ForeignKey(Gen, on_delete=models.CASCADE)
+    gen = models.ForeignKey(
+        Gen,
+        on_delete=models.CASCADE,
+        related_name='moves'
+    )
     name = models.CharField(max_length=10)
     name_jp = models.CharField(max_length=20)
     name_en = models.CharField(max_length=30)
-    type = models.ForeignKey(Type, on_delete=models.CASCADE)
-    kind = models.ForeignKey(Kind, on_delete=models.CASCADE)
+    type = models.ForeignKey(
+        Type,
+        on_delete=models.CASCADE,
+        related_name='moves'
+    )
+    kind = models.ForeignKey(
+        Kind,
+        on_delete=models.CASCADE,
+        related_name='moves'
+    )
     power = models.SmallIntegerField()
     accuracy = models.SmallIntegerField()
     pp = models.SmallIntegerField()
@@ -136,6 +192,9 @@ class PokemonMove(models.Model):
     condition = models.CharField(max_length=10)
 
 
-class WordDic(models.Model):
-    word = models.CharField(max_length=10, primary_key=True)
-    tag = models.CharField(max_length=10)
+class Router(models.Model):
+    uri = models.CharField()
+    flag = models.CharField(max_length=10)
+    cns = ArrayField(
+        models.CharField(max_length=10),
+    )

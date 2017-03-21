@@ -36,7 +36,7 @@ class Aldnoah(object):
 
         # 按照策略的优先级进行分析
         for strategy in self._strategies:
-            if qobj.queries:
+            if qobj.query:
                 # 高优先级策略得到结果则不执行低优先级的
                 break
             qobj = strategy.analyze(qobj)

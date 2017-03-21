@@ -1,5 +1,6 @@
 from .utils import Stack
-from .models import Question
+from .models import Question, Query
+from enum import Enum
 
 
 class Strategy(object):
@@ -14,18 +15,87 @@ class Strategy(object):
         pass
 
 
+# name domain recognition
+class DomainWord(Enum):
+    Entity = 'we'
+    EntityIndex = 'wi'
+    Attribute = 'wa'
+    AttrValue = 'wv'
+    Relation = 'wr'
+    Sign = 'ws'
+
+
+def ndr(flag):
+    try:
+        return DomainWord(flag[0:2])
+    except ValueError:
+        return None
+
+
+def _popfromqueue(q, default=None):
+    try:
+        return q.popleft()
+    except IndexError:
+        return default
+
+
 class InfoExtractStrategy(Strategy):
 
     """Docstring for InfoExtractStrategy. """
 
     def __init__(self, priority):
         Strategy.__init__(self, priority)
-        self._stopwords = [
+        self._ignorewords = [
             'uj',   # 的
+            'wis',  # 是, 为
+            'ry',   # 疑问代词: 谁, 什么, 哪, 哪些...
+            'p',    # 介词
+            'v',    # 动词
         ]
-        self._ignorewords = []
 
     def analyze(self, qobj: Question):
+        wordcount = len(qobj.segment)
+        for word, flag in qobj.segment:
+            if flag in self._ignorewords:
+                continue
+            sign = ndr(flag)
+        for i, e in enumerate(qobj.segment):
+            word, flag = e
+            if flag in self._ignorewords:
+                continue
+            sign = ndr(flag)
+            """
+            11: 弹出所有属性和实体
+            10: 弹出实体
+            01: 弹出一个属性
+            00: 不操作
+            """
+            pop = '00'
+            if sign in [DomainWord.Entity, DomainWord.EntityIndex]:
+                if len(self._entityqueue) > 0:
+                    pop = '11'
+                self._entityqueue.append((word, flag))
+            elif sign is DomainWord.Attribute:
+                if len(self._attrqueue) > 0:
+                    pop = '01'
+                self._attrqueue.append((word, flag))
+            elif sign is DomainWord.Relation:
+                pass
+            elif sign is DomainWord.AttrValue:
+                self._valuequeue.append((word, flag))
+            else:
+                self._valuequeue.append((word, flag))
+
+            if i == wordcount - 1:
+                pop = '11'
+
+            if pop == '11':
+                entity = popfromqueue(self._entityqueue)
+                attrcount = max(len(self._attrqueue, self._valuequeue))
+                for i in range(attrcount):
+                    attribue = popfromqueue(self._attrqueue)
+                    value = popfromqueue(self._valuequeue)
+
         entities = []
         properties = []
         relations = []

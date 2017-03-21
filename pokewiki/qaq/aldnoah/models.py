@@ -5,7 +5,7 @@ class Query(object):
 
     """Docstring for Query. """
 
-    class Relation(Enum):
+    class Sign(Enum):
         Equal = '='
         Great = '>'
         GreatTE = '>='
@@ -40,7 +40,7 @@ class Question(object):
     def __init__(self, question):
         self.question = question
         self.segment = []
-        self.queries = []
+        self.query = None
         #  TODO: question_type #
 
 
