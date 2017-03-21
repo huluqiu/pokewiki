@@ -136,7 +136,7 @@ def _solvepokemons():
     pokemon_objs = sorted(pokemon_objs, key=lambda obj: obj['num'])
     for pokemon in pokemon_objs:
         num, name, pokemon_class, gen = _pokemon_num_name_map[int(pokemon['num'])]
-        name = pokemon['name']
+        name = pokemon['name'].replace('\u200e', '')
         m = re.match(r'（(.+)、(.+)）是', pokemon['name_jp_en'])
         name_jp = m.group(1)
         name_en = m.group(2)

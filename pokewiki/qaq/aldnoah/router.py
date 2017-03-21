@@ -37,7 +37,7 @@ def geturl(flag):
 
 
 def getflag(url, t: Type):
-    return None
+    return t.value
 
 
 def setschema(uri, schema):
@@ -66,6 +66,7 @@ def addindex(uri, index):
     return '%s:%s' % (uri, index)
 
 
+# 根据 yaml 配置, 注册 uri
 def register(config):
 
     def traverse_attr(uri, attribute):
@@ -87,7 +88,8 @@ def register(config):
                 if attribute:
                     routers.extend(traverse_attr(a_uri, attribute))
                 model = v.get('id', None)
-                if model and index:
+                entity = v.get('entity', None)
+                if model and index and not entity:
                     app = uri.split('://')[0]
                     m = apps.get_model(app, model)
                     for v in m.objects.all():
@@ -116,9 +118,11 @@ def register(config):
             raise ValueError('yaml 必须指定 app')
         routers = []
         for k, v in d.items():
+            if k == 'app':
+                continue
             # 选出实体
             entity = v.get('entity', False)
-            if not entity:
+            if entity is False:
                 continue
             uri = setschema(v['id'], app)
             index = v.get('index', None)
@@ -148,3 +152,12 @@ def register(config):
                     cns=e_cns
                 ))
         Router.objects.bulk_create(routers)
+
+
+def generate_dic(path):
+    word_frequency = 2333
+    with open(path, 'w') as f:
+        for e in Router.objects.distinct('cns'):
+            for cn in e.cns:
+                line = '%s %s %s\n' % (cn, word_frequency, e.flag)
+                f.write(line)

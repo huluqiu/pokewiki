@@ -1,7 +1,8 @@
 import os
 from .aldnoah import (
     Aldnoah, JiebaProcessor, InfoExtractStrategy,
-    DjangoRetrieve, DjangoAnswerEngine
+    DjangoRetrieve, DjangoAnswerEngine,
+    router
 )
 
 
@@ -10,9 +11,11 @@ def _get_abs_path(path):
 
 
 POKE_DICT_NAME = 'pokedict'
+# router.register(_get_abs_path('map.yaml'))
+# router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 
 aldnoah = (Aldnoah()
-           # .add_preprocessor(JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
+           .add_preprocessor(JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
            .add_strategy(InfoExtractStrategy(priority=5))
            .set_retrieve(DjangoRetrieve())
            .set_answereg(DjangoAnswerEngine())
