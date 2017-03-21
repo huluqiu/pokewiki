@@ -102,7 +102,7 @@ class PokemonForm(models.Model):
     )
 
     class Meta:
-        unique_together = (('pokemon', 'form'))
+        unique_together = (('pokemon', 'name'))
 
 
 class Evolution(models.Model):
@@ -193,7 +193,7 @@ class PokemonMove(models.Model):
 
 
 class Router(models.Model):
-    uri = models.CharField()
+    uri = models.CharField(max_length=100)
     flag = models.CharField(max_length=10)
     cns = ArrayField(
         models.CharField(max_length=10),

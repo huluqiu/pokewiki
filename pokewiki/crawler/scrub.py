@@ -3,7 +3,7 @@ import gotyou
 import re
 from pathlib import PurePath
 
-_jsonpath = os.path.join(PurePath(os.path.realpath(__file__)).parent.parent.parent, 'crawler/jsons')
+_jsonpath = os.path.join(PurePath(os.path.realpath(__file__)).parent, 'jsons')
 
 _error_name_map = {
     '可拉可拉': '卡拉卡拉',

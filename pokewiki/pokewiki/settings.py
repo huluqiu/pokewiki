@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'qaq.apps.QaqConfig',
+    'crawler.apps.CrawlerConfig',
 ]
 
 MIDDLEWARE = [
@@ -78,7 +79,7 @@ WSGI_APPLICATION = 'pokewiki.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pokewiki_test',
+        'NAME': 'pokewiki_test1',
         'USER': 'alezai',
     }
 }

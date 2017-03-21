@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
-from qaq import scrub
+from crawler import scrub
 
 
 def load_gen(apps, schema_editor):
@@ -80,19 +80,22 @@ def load_form(apps, schema_editor):
     PokemonForm = apps.get_model('qaq', 'PokemonForm')
     Pokemon = apps.get_model('qaq', 'Pokemon')
     Type = apps.get_model('qaq', 'Type')
+    Stats = apps.get_model('qaq', 'Stats')
     for v in scrub.get_forms():
         (num, form_name, types, height, weight,
          stats, stats_get, is_normal) = v
         pokemon = Pokemon.objects.get(pk=num)
-        stats = stats_map(stats)
-        stats_get = stats_map(stats_get)
+        stats = Stats(**stats_map(stats))
+        stats.save()
+        stats_get = Stats(**stats_map(stats_get))
+        stats_get.save()
         types = Type.objects.filter(name__in=types)
         try:
-            obj = PokemonForm.objects.get(pokemon=pokemon, form=form_name)
+            obj = PokemonForm.objects.get(pokemon=pokemon, name=form_name)
         except PokemonForm.DoesNotExist:
             obj = PokemonForm(
                 pokemon=pokemon,
-                form=form_name,
+                name=form_name,
                 is_normal=is_normal,
                 height=height,
                 weight=weight,
@@ -148,7 +151,7 @@ def load_pokemon_ability(apps, schema_editor):
     PokemonForm = apps.get_model('qaq', 'PokemonForm')
     pokemon_abilities = []
     for (poke_num, ability_num, form_name, is_hidden) in scrub.get_pokemon_ability_map():
-        pokemon_form = PokemonForm.objects.get(pokemon=poke_num, form=form_name)
+        pokemon_form = PokemonForm.objects.get(pokemon=poke_num, name=form_name)
         ability = Ability.objects.get(pk=ability_num)
         pokemon_ability = PokemonAbility(
             pokemon_form=pokemon_form,

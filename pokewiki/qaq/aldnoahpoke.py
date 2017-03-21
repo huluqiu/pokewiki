@@ -12,7 +12,7 @@ def _get_abs_path(path):
 POKE_DICT_NAME = 'pokedict'
 
 aldnoah = (Aldnoah()
-           .add_preprocessor(JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
+           # .add_preprocessor(JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
            .add_strategy(InfoExtractStrategy(priority=5))
            .set_retrieve(DjangoRetrieve())
            .set_answereg(DjangoAnswerEngine())
