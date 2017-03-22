@@ -40,7 +40,8 @@ class Question(object):
     def __init__(self, question):
         self.question = question
         self.segment = []
-        self.query = None
+        self.queries = []
+        self.domainwords = []
         #  TODO: question_type #
 
 

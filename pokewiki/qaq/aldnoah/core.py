@@ -32,14 +32,14 @@ class Aldnoah(object):
         qobj = Question(question)
         # 预处理
         for preprocess in self._preprocessors:
-            qobj = preprocess.process(qobj)
+            preprocess.process(qobj)
 
         # 按照策略的优先级进行分析
         for strategy in self._strategies:
-            if qobj.query:
+            if qobj.queries:
                 # 高优先级策略得到结果则不执行低优先级的
                 break
-            qobj = strategy.analyze(qobj)
+            strategy.analyze(qobj)
 
         # 检索数据
         querysets = []

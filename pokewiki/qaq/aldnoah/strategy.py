@@ -1,6 +1,7 @@
 from .utils import Stack
 from .models import Question, Query
 from enum import Enum
+from .router import match
 
 
 class Strategy(object):
@@ -13,23 +14,6 @@ class Strategy(object):
 
     def analyze(self, qobj):
         pass
-
-
-# name domain recognition
-class DomainWord(Enum):
-    Entity = 'we'
-    EntityIndex = 'wi'
-    Attribute = 'wa'
-    AttrValue = 'wv'
-    Relation = 'wr'
-    Sign = 'ws'
-
-
-def ndr(flag):
-    try:
-        return DomainWord(flag[0:2])
-    except ValueError:
-        return None
 
 
 def _popfromqueue(q, default=None):
@@ -45,88 +29,74 @@ class InfoExtractStrategy(Strategy):
 
     def __init__(self, priority):
         Strategy.__init__(self, priority)
-        self._ignorewords = [
+        # 属性值配对模式, key 代表窗口大小
+        self._pairpattern = {
+            1: [],
+            2: [],
+            3: [],
+        }
+        # 不可能作为属性值的词性
+        self._viflags = [
             'uj',   # 的
-            'wis',  # 是, 为
             'ry',   # 疑问代词: 谁, 什么, 哪, 哪些...
             'p',    # 介词
-            'v',    # 动词
+            'u',    # 助词
+            'we', 'wi', 'wa',
+        ]
+        self._viwords = [
+            '是',
+        ]
+        # 代表赋值的词
+        self._signs = [
+            '是', '为',
+            '等于', '大于', '小于',
+            '有', '包括', '包含'
         ]
 
     def analyze(self, qobj: Question):
-        wordcount = len(qobj.segment)
-        for word, flag in qobj.segment:
-            if flag in self._ignorewords:
-                continue
-            sign = ndr(flag)
-        for i, e in enumerate(qobj.segment):
-            word, flag = e
-            if flag in self._ignorewords:
-                continue
-            sign = ndr(flag)
-            """
-            11: 弹出所有属性和实体
-            10: 弹出实体
-            01: 弹出一个属性
-            00: 不操作
-            """
-            pop = '00'
-            if sign in [DomainWord.Entity, DomainWord.EntityIndex]:
-                if len(self._entityqueue) > 0:
-                    pop = '11'
-                self._entityqueue.append((word, flag))
-            elif sign is DomainWord.Attribute:
-                if len(self._attrqueue) > 0:
-                    pop = '01'
-                self._attrqueue.append((word, flag))
-            elif sign is DomainWord.Relation:
-                pass
-            elif sign is DomainWord.AttrValue:
-                self._valuequeue.append((word, flag))
-            else:
-                self._valuequeue.append((word, flag))
+        # 1. 筛选 uri 和 flag
+        # 2. 属性值配对
+        # 3. 得出 conditions
+        # 4. 确定 target 和 model
+        # 5. 生成 query 放进 qobj
+        domainwords_filter = []
+        length = len(qobj.domainwords)
+        weights = [[0 for e in range(len(uris))] for word, uris in qobj.domainwords]
+        for i in range(length):
+            uris1 = qobj.domainwords[i][1]
+            weight1 = weights[i]
+            for j in range(i + 1, length):
+                uris2 = qobj.domainwords[j][1]
+                weight2 = weights[j]
+                for m, value1 in enumerate(uris1):
+                    w1 = weight1[m]
+                    for n, value2 in enumerate(uris2):
+                        w2 = weight2[n]
+                        if match(value1['uri'], value2['uri']):
+                            weight1[m] = w1 + 1
+                            weight2[n] = w2 + 1
+                weights[j] = weight2
+            weights[i] = weight1
+        for i in range(length):
+            word, uris = qobj.domainwords[i]
+            weight = weights[i]
+            index = 0
+            for j, value in enumerate(weight):
+                if j == index:
+                    continue
+                max_weight = weight[index]
+                if value > max_weight:
+                    index = j
+                elif value == max_weight:
+                    l1 = len(uris[index]['uri'].split('/'))
+                    l2 = len(uris[j]['uri'].split('/'))
+                    if l2 < l1:
+                        index = j
+            domainwords_filter.append({
+                'word': word,
+                'uri': uris[index]['uri'],
+                'flag': uris[index]['flag']
+            })
+        qobj.domainwords = domainwords_filter
 
-            if i == wordcount - 1:
-                pop = '11'
-
-            if pop == '11':
-                entity = popfromqueue(self._entityqueue)
-                attrcount = max(len(self._attrqueue, self._valuequeue))
-                for i in range(attrcount):
-                    attribue = popfromqueue(self._attrqueue)
-                    value = popfromqueue(self._valuequeue)
-
-        entities = []
-        properties = []
-        relations = []
-        v_stack = Stack()
-        p_stack = Stack()
-        for word, flag in qobj.segment:
-            pre_flag = flag[0:2]
-            if pre_flag == 'ws':
-                entities.append((flag[2:], '?'))
-            if pre_flag == 'wu':
-                entities.append((flag[2:], word))
-            if pre_flag == 'wr':
-                relations.append((word, flag))
-
-            if len(p_stack) == 0 and flag == 'wp':
-                p_stack.push(word)
-            elif pre_flag in ['wp', 'uj', 'ws']:
-                if len(p_stack) > 0:
-                    properties.append((p_stack.pop(), v_stack.pop(('?',))[0]))
-                if pre_flag == 'wp':
-                    p_stack.push(word)
-            elif pre_flag == 'wv' or pre_flag not in ['v', 'p', 'r', 'wu', 'zg']:
-                v_stack.push((word, flag))
-        while len(p_stack) > 0:
-            properties.append((p_stack.pop(), v_stack.pop(('?',))[0]))
-        while len(v_stack) > 0:
-            word, flag = v_stack.pop()
-            p = {'wvtp': '属性', 'wvkd': '种类'}.get(flag, None)
-            if p:
-                properties.append((p, word))
-        qobj.entities = entities
-        qobj.properties = properties
-        qobj.relations = relations
-        return qobj
+        # 2

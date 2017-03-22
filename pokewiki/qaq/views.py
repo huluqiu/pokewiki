@@ -29,5 +29,5 @@ class EggGroupViewSet(viewsets.ReadOnlyModelViewSet):
 
 @api_view()
 def qaq(request):
-    # q = request.query_params.get('question', None)
-    return Response(aldnoahpoke.answer_test())
+    q = request.query_params.get('question', None)
+    return Response(aldnoahpoke.answer(q))

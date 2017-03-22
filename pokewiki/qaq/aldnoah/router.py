@@ -28,12 +28,20 @@ class Type(Enum):
     Sign = 'ws'
 
 
-def match(entity, attribute):
-    return False
+def match(uri1, uri2):
+    uri1 = getbody(uri1).lower().split('=')[0]
+    uri2 = getbody(uri2).lower().split('=')[0]
+    return uri1 in uri2 or uri2 in uri1
 
 
-def geturl(flag):
-    return None
+def geturi(word):
+    """
+    从数据库中查询单词对应的 uri 和 flag, 可能多个
+
+    @return: [(uri, flag)]
+    """
+    queryset = Router.objects.filter(cns__contains=[word])
+    return list(queryset.values('uri', 'flag'))
 
 
 def getflag(url, t: Type):
@@ -46,6 +54,10 @@ def setschema(uri, schema):
     separate = '://'
     path = uri.split(separate)[-1]
     return '%s://%s' % (schema, path)
+
+
+def getbody(uri):
+    return uri.split('://')[-1]
 
 
 def seturivalue(uri, value):
@@ -88,8 +100,7 @@ def register(config):
                 if attribute:
                     routers.extend(traverse_attr(a_uri, attribute))
                 model = v.get('id', None)
-                entity = v.get('entity', None)
-                if model and index and not entity:
+                if model and index:
                     app = uri.split('://')[0]
                     m = apps.get_model(app, model)
                     for v in m.objects.all():
@@ -155,9 +166,13 @@ def register(config):
 
 
 def generate_dic(path):
-    word_frequency = 2333
+    """
+    生成领域词汇字典供 jieba 使用
+    """
+    word_frequency = 233333
+    tag = 'poke'
     with open(path, 'w') as f:
         for e in Router.objects.distinct('cns'):
             for cn in e.cns:
-                line = '%s %s %s\n' % (cn, word_frequency, e.flag)
+                line = '%s %s %s\n' % (cn, word_frequency, tag)
                 f.write(line)
