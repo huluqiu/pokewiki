@@ -2,6 +2,7 @@ from .utils import Stack
 from .models import Question, Query
 from enum import Enum
 from .router import match
+from collections import Iterable
 
 
 class Strategy(object):
@@ -31,27 +32,43 @@ class InfoExtractStrategy(Strategy):
         Strategy.__init__(self, priority)
         # 属性值配对模式, key 代表窗口大小
         self._pairpattern = {
-            1: [],
-            2: [],
-            3: [],
+            1: [
+                ('wa',),
+                ('wv',),
+            ],
+            2: [
+                ('wa', '*'),
+                ('*', 'wa')
+            ],
+            3: [
+                ('wa', 'sign', '*'),
+                ('*', '的', 'wa'),
+            ],
         }
         # 不可能作为属性值的词性
         self._viflags = [
             'uj',   # 的
-            'ry',   # 疑问代词: 谁, 什么, 哪, 哪些...
             'p',    # 介词
             'u',    # 助词
+            'r',    # 代词
             'we', 'wi', 'wa',
         ]
         self._viwords = [
-            '是',
+            '能', '系'
         ]
         # 代表赋值的词
-        self._signs = [
-            '是', '为',
-            '等于', '大于', '小于',
-            '有', '包括', '包含'
-        ]
+        self._signs = {
+            '=': ['是', '为', '等于'],
+            '>': ['大于'],
+            '<': ['小于'],
+            '@>': ['包含', '包括', '有'],
+        }
+        # 展开符号字典
+        flattensigns = {}
+        for key, value in self._signs.items():
+            for e in value:
+                flattensigns[e] = key
+        self._flattensigns = flattensigns
 
     def analyze(self, qobj: Question):
         # 1. 筛选 uri 和 flag
@@ -100,3 +117,91 @@ class InfoExtractStrategy(Strategy):
         qobj.domainwords = domainwords_filter
 
         # 2
+        domainwords_attr = list(filter(lambda n:
+                                       n['flag'] == 'wa' or n['flag'] == 'wv',
+                                       domainwords_filter))
+
+        pairs = []
+        if len(domainwords_attr) > 0:
+
+            def patternmatch(segment, index, pattern, pairs):
+                pattern = list(pattern)
+                attribute = ''
+                sign = ''
+                value = ''
+                for i, v in enumerate(pattern):
+                    word, flag = segment[index + i]
+                    if flag['match'] is True:
+                        return False
+                    if v == '*':
+                        if (word in self._viwords or
+                                flag['flag'] in self._viflags or
+                                word in self._flattensigns.keys()):
+                            return False
+                        else:
+                            value = word
+                    elif v == 'sign':
+                        if word not in self._flattensigns.keys():
+                            return False
+                        else:
+                            sign = self._flattensigns[word]
+                    else:
+                        if word != v and flag['flag'] != v:
+                            return False
+                        else:
+                            attribute = flag
+                for word, flag in segment[index:index + len(pattern)]:
+                    flag['match'] = True
+                if attribute and sign and value:
+                    pair = '%s%s%s' % (attribute['uri'], sign, value)
+                elif attribute and value:
+                    pair = '%s=%s' % (attribute['uri'], value)
+                elif attribute:
+                    if attribute['flag'] == 'wv':
+                        pair = attribute['uri']
+                    else:
+                        pair = ''
+                else:
+                    pair = ''
+                if pair:
+                    pairs.append(pair)
+                return True
+
+            segment_domainflag = []
+            domainwords_iter = iter(domainwords_filter)
+            for word, flag in qobj.segment:
+                if flag == 'poke':
+                    flag = next(domainwords_iter)
+                else:
+                    flag = {'flag': flag}
+                flag['match'] = False
+                segment_domainflag.append((word, flag))
+
+            allmatch = False
+            patternkey = iter([3, 2, 1])
+            while(not allmatch):
+                try:
+                    patterns = iter(self._pairpattern[next(patternkey)])
+                except StopIteration:
+                    break
+                while(not allmatch):
+                    try:
+                        pattern = next(patterns)
+                    except StopIteration:
+                        break
+                    index = 0
+                    l_pattern = len(pattern)
+                    while(index + l_pattern <= len(segment_domainflag)):
+                        ismatch = patternmatch(segment_domainflag, index, pattern, pairs)
+                        if ismatch:
+                            index = index + l_pattern
+                        else:
+                            index = index + 1
+                    # 检查是否全部配对
+                    for v in domainwords_attr:
+                        if v['match'] is False:
+                            allmatch = False
+                            break
+                        else:
+                            allmatch = True
+        setattr(qobj, 'pairs', pairs)
