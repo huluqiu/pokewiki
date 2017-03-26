@@ -81,7 +81,7 @@ class PokemonForm(models.Model):
     is_normal = models.BooleanField()
     types = models.ManyToManyField(
         Type,
-        'forms'
+        related_name='forms'
     )
     height = models.FloatField()
     weight = models.FloatField()

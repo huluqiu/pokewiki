@@ -11,26 +11,27 @@ class Query(object):
         GreatTE = '>='
         Less = '<'
         LessTE = '<='
-        Contain = 'LIKE'
-        In = 'IN'
+        Contain = '@>'
+        In = '<@'
         NotEqual = '!='
-        NotGreat = '<='
-        NotGreatTE = '<'
-        NotLess = '>='
-        NotLessTE = '>'
-        NotContain = 'NOT LIKE'
-        NotIn = 'NOT IN'
+        NotContain = '!@>'
+        NotIn = '!<@'
 
-    def __init__(self, target=None, model=None, conditions=None):
-        # 对应 select
-        # eg: ['id', 'name_en']
-        self.target = target
+    def __init__(self, model=None, target=None, condition=None):
         # 对应 from
         # eg: 'Pokemon'
         self.model = model
+        # 对应 select
+        # eg: ['id', 'name_en']
+        self.target = target
         # 对应 where
         # eg: [('name', '=', '皮卡丘'), ...]
-        self.conditions = conditions
+        self.condition = condition
+
+
+class QuestionType(Enum):
+    Bool = 'bool'
+    Specific = 'specific'
 
 
 class Question(object):
@@ -40,9 +41,9 @@ class Question(object):
     def __init__(self, question):
         self.question = question
         self.segment = []
-        self.queries = []
         self.domainwords = []
-        #  TODO: question_type #
+        self.type = None
+        self.query = None
 
 
 class Answer(object):

@@ -1,8 +1,7 @@
 import yaml
-from enum import Enum
 from django.apps import apps
-
-Router = apps.get_model('qaq', 'Router')
+from enum import Enum
+import re
 
 # uri: qaq://Pokemon:name
 # uri: qaq://Pokemon:name='皮卡丘'/name_en
@@ -17,6 +16,12 @@ Router = apps.get_model('qaq', 'Router')
 # cn1 \
 # cn2 - >flag - > url
 # cn3 /
+
+Router = apps.get_model('qaq', 'Router')
+
+re_model = re.compile(r'(?<=://)\w+(?=:)')
+re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
+re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
 
 
 class Type(Enum):
@@ -44,8 +49,42 @@ def geturi(word):
     return list(queryset.values('uri', 'flag'))
 
 
+def getbody(uri):
+    return uri.split('://')[-1]
+
+
+def getmodel(uri):
+    return re_model.search(uri).group()
+
+
+def getattribute(uri):
+    uri = getbody(uri)
+    uri = uri.split('/')
+    if len(uri) == 1:
+        uri = uri[0].split(':')[-1]
+        attribute = re_wa.match(uri).groups()
+    else:
+        parent = ''
+        for e in uri[1:-1]:
+            if not parent:
+                parent = e.split(':')[0]
+            else:
+                parent = '%s/%s' % (parent, e.split(':')[0])
+        leaf = list(re_wa.match(uri[-1]).groups())
+        leaf[0] = leaf[0].replace(':', '/')
+        if parent:
+            leaf[0] = '%s/%s' % (parent, leaf[0])
+        attribute = leaf
+    attribute = list(filter(lambda n: n, attribute))
+    return attribute
+
+
 def getflag(url, t: Type):
     return t.value
+
+
+def getschema(uri):
+    return uri.split('://')[0]
 
 
 def setschema(uri, schema):
@@ -54,10 +93,6 @@ def setschema(uri, schema):
     separate = '://'
     path = uri.split(separate)[-1]
     return '%s://%s' % (schema, path)
-
-
-def getbody(uri):
-    return uri.split('://')[-1]
 
 
 def seturivalue(uri, value):

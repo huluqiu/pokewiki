@@ -1,7 +1,6 @@
 import os
 from .aldnoah import (
     Aldnoah, preprocess, strategy, retrieve, answerengine,
-    router
 )
 
 
@@ -25,9 +24,10 @@ aldnoah = (Aldnoah()
 
 
 def answer(question):
-    if debug:
+    if question:
+        return aldnoah.answer(question)
+    else:
         return answer_test()
-    return aldnoah.answer(question)
 
 
 def answer_test():
@@ -38,5 +38,5 @@ def answer_test():
         questions = list(map(lambda n: n.strip(), questions))
 
     for q in questions:
-        rs.append(aldnoah.answer(q).__dict__)
+        rs.append(aldnoah.answer(q))
     return rs

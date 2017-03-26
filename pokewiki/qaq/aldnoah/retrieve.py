@@ -1,4 +1,5 @@
 from .models import Query
+from . import router
 from qaq import models
 
 
@@ -35,14 +36,40 @@ class DjangoRetrieve(Retrieve):
             md = getattr(models, query.model)
         except AttributeError:
             return None
-        queryset = None
-        for attribue, relate, value in query.conditions:
-            negative = relate.name.startswith('Not')
-            relate = Query.Sign[relate.name.replace('Not', '')]
-            if relate in self.sign_map:
-                d = {attribue + self.sign_map[relate]: value}
-                if negative:
-                    queryset = md.objects.exclude(**d)
-                else:
-                    queryset = md.objects.filter(**d)
-        return queryset
+        queryset = md.objects.all()
+        condition = {}
+        # filter
+        for uri in query.condition:
+            attribute, sign, value = router.getattribute(uri)
+            # attribute: a/b/c/d -> a__b__c__d
+            attribute = attribute.replace('/', '__')
+            # sign: @> -> __contains
+            sign = Query.Sign(sign)
+            negative = sign.name.startswith('Not')
+            sign = Query.Sign[sign.name.replace('Not', '')]
+            sign = self.sign_map[sign]
+            # (a/b, @>, v) -> a__b__contains=v
+            attribute = attribute + sign
+            if attribute in condition:
+                pre_value = condition.pop(attribute)[0]
+                if not isinstance(pre_value, list):
+                    pre_value = [pre_value]
+                pre_value.append(value)
+                value = pre_value
+                attribute = '%s__in' % attribute
+            condition[attribute] = (value, negative)
+
+        for k, v in condition.items():
+            value, negative = v
+            if negative:
+                queryset = queryset.exclude(**{k: value})
+            else:
+                queryset = queryset.filter(**{k: value})
+
+        # values
+        values = []
+        for uri in query.target:
+            attribute = router.getattribute(uri)[0]
+            attribute = attribute.replace('/', '__')
+            values.append(attribute)
+        return queryset.distinct().values(*values)

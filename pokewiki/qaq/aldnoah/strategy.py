@@ -1,8 +1,5 @@
-from .utils import Stack
-from .models import Question, Query
-from enum import Enum
-from .router import match
-from collections import Iterable
+from .models import Question, Query, QuestionType
+from . import router
 
 
 class Strategy(object):
@@ -33,7 +30,6 @@ class InfoExtractStrategy(Strategy):
         # 属性值配对模式, key 代表窗口大小
         self._pairpattern = {
             1: [
-                ('wa',),
                 ('wv',),
             ],
             2: [
@@ -51,6 +47,7 @@ class InfoExtractStrategy(Strategy):
             'p',    # 介词
             'u',    # 助词
             'r',    # 代词
+            'c',    # 连词
             'we', 'wi', 'wa',
         ]
         self._viwords = [
@@ -89,7 +86,7 @@ class InfoExtractStrategy(Strategy):
                     w1 = weight1[m]
                     for n, value2 in enumerate(uris2):
                         w2 = weight2[n]
-                        if match(value1['uri'], value2['uri']):
+                        if router.match(value1['uri'], value2['uri']):
                             weight1[m] = w1 + 1
                             weight2[n] = w2 + 1
                 weights[j] = weight2
@@ -114,7 +111,7 @@ class InfoExtractStrategy(Strategy):
                 'uri': uris[index]['uri'],
                 'flag': uris[index]['flag']
             })
-        qobj.domainwords = domainwords_filter
+        # qobj.domainwords = domainwords_filter
 
         # 2
         domainwords_attr = list(filter(lambda n:
@@ -154,11 +151,14 @@ class InfoExtractStrategy(Strategy):
                     flag['match'] = True
                 if attribute and sign and value:
                     pair = '%s%s%s' % (attribute['uri'], sign, value)
+                    pair = {'uri': pair, 'flag': 'wp'}
                 elif attribute and value:
                     pair = '%s=%s' % (attribute['uri'], value)
+                    pair = {'uri': pair, 'flag': 'wp'}
                 elif attribute:
                     if attribute['flag'] == 'wv':
                         pair = attribute['uri']
+                        pair = {'uri': pair, 'flag': 'wp'}
                     else:
                         pair = ''
                 else:
@@ -204,4 +204,26 @@ class InfoExtractStrategy(Strategy):
                             break
                         else:
                             allmatch = True
-        setattr(qobj, 'pairs', pairs)
+        # setattr(qobj, 'pairs', pairs)
+
+        # 3
+        domainwords_filter = list(filter(lambda n: not n.get('match', False), domainwords_filter))
+        keys = {'uri', 'flag'}
+        uris = list(map(lambda n: {key: value for key, value in n.items() if key in keys}, domainwords_filter))
+        uris.extend(pairs)
+        # setattr(qobj, 'uris', uris)
+
+        # 4. 确定问题类型
+        target = []
+        condition = []
+        for uri in uris:
+            if uri['flag'] in ['wa', 'we']:
+                target.append(uri['uri'])
+            else:
+                condition.append(uri['uri'])
+        qobj.type = QuestionType.Specific if len(target) > 0 else QuestionType.Bool
+        if target:
+            model = router.getmodel(target[0])
+        else:
+            model = router.getmodel(condition[0])
+        qobj.query = Query(model=model, target=target, condition=condition)

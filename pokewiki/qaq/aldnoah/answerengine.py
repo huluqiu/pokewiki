@@ -1,4 +1,4 @@
-from .models import Question, Answer
+from .models import Question, Answer, QuestionType
 
 
 class AnswerEngine(object):
@@ -14,19 +14,23 @@ class DjangoAnswerEngine(AnswerEngine):
     """Docstring for PokeAnswerEngine. """
 
     def __init__(self):
-        """TODO: to be defined1. """
         AnswerEngine.__init__(self)
 
-    def answer(self, qobj: Question, querysets):
-        return qobj
-        # answer = []
-        # for i, query in enumerate(qobj.queries):
-            # queryset = querysets[i]
-            # if len(query.target) == 1 and query.target == '*':
-                # brief = list(queryset.values())
-                # entire = brief
-            # else:
-                # brief = list(queryset.values(*query.target))
-                # entire = list(queryset.values())
-            # answer.append(Answer(brief, entire))
-        # return answer
+    def answer(self, qobj: Question, queryset):
+        if qobj.type is QuestionType.Bool:
+            if queryset:
+                answer = '对^_^'
+            else:
+                answer = '不不不→_→'
+        elif qobj.type is QuestionType.Specific:
+            answer = queryset
+        else:
+            answer = queryset
+        return {
+            'question': qobj.question,
+            'answer': answer,
+            # 'query': {
+                # 'target': qobj.query.target,
+                # 'condition': qobj.query.condition,
+            # },
+        }

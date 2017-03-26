@@ -36,18 +36,15 @@ class Aldnoah(object):
 
         # 按照策略的优先级进行分析
         for strategy in self._strategies:
-            if qobj.queries:
+            if qobj.query:
                 # 高优先级策略得到结果则不执行低优先级的
                 break
             strategy.analyze(qobj)
 
         # 检索数据
-        querysets = []
-        for query in qobj.queries:
-            queryset = self._retrieve.retrieve(query)
-            querysets.append(queryset)
+        queryset = self._retrieve.retrieve(qobj.query)
 
         # 回答
-        answer = self._answereg.answer(qobj, querysets)
+        answer = self._answereg.answer(qobj, queryset)
 
         return answer
