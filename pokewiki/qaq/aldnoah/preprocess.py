@@ -1,5 +1,5 @@
 from .models import Question
-from .router import geturi
+from . import router
 import jieba
 import jieba.posseg as pseg
 
@@ -44,4 +44,4 @@ class DwrProcessor(Preprocessor):
     def process(self, qobj: Question):
         for word, flag in qobj.segment:
             if flag == self._flag:
-                qobj.domainwords.append((word, geturi(word)))
+                qobj.domainwords.append((word, router.geturi(word)))

@@ -17,6 +17,8 @@ import re
 # cn2 - >flag - > url
 # cn3 /
 
+DOMAIN_WORD_FLAG = 'poke'
+
 Router = apps.get_model('qaq', 'Router')
 
 re_model = re.compile(r'(?<=://)\w+(?=:)')
@@ -24,13 +26,45 @@ re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
 re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
 
 
-class Type(Enum):
+class Flag(Enum):
     Entity = 'we'
     EntityIndex = 'wi'
     Attribute = 'wa'
-    AttrValue = 'wv'
+    Value = 'wv'
+    AttrValue = 'wav'
     Relation = 'wr'
     Sign = 'ws'
+    Paired = 'wp'
+    Any = '*'
+
+
+class Sign(Enum):
+    Equal = '='
+    Great = '>'
+    GreatTE = '>='
+    Less = '<'
+    LessTE = '<='
+    Contain = '@>'
+    In = '<@'
+    NotEqual = '!='
+    NotContain = '!@>'
+    NotIn = '!<@'
+
+
+def is_domainword(flag):
+    return flag == DOMAIN_WORD_FLAG
+
+
+def is_attribute(flag):
+    return flag == Flag.Attribute or flag == Flag.AttrValue
+
+
+def is_target(flag):
+    return flag == Flag.Attribute or flag == Flag.Entity
+
+
+def is_condition(flag):
+    return flag == Flag.Paired or flag == Flag.EntityIndex
 
 
 def match(uri1, uri2):
@@ -51,6 +85,10 @@ def geturi(word):
 
 def getbody(uri):
     return uri.split('://')[-1]
+
+
+def lenofuri(uri):
+    return len(getbody(uri).split('/'))
 
 
 def getmodel(uri):
@@ -79,7 +117,7 @@ def getattribute(uri):
     return attribute
 
 
-def getflag(url, t: Type):
+def getflag(url, t: Flag):
     return t.value
 
 
@@ -120,7 +158,7 @@ def register(config):
         routers = []
         for k, v in attribute.items():
             a_uri = appenduri(uri, k)
-            flag = getflag(a_uri, Type.Attribute)
+            flag = getflag(a_uri, Flag.Attribute)
             if isinstance(v, list):
                 # 属性值
                 cns = v
@@ -130,7 +168,7 @@ def register(config):
                 index = v.get('index', None)
                 if index:
                     a_uri = addindex(a_uri, index)
-                    flag = getflag(a_uri, Type.Attribute)
+                    flag = getflag(a_uri, Flag.Attribute)
                 attribute = v.get('attribute', None)
                 if attribute:
                     routers.extend(traverse_attr(a_uri, attribute))
@@ -141,7 +179,7 @@ def register(config):
                     for v in m.objects.all():
                         indexvalue = getattr(v, index)
                         v_uri = seturivalue(a_uri, indexvalue)
-                        v_flag = getflag(v_uri, Type.AttrValue)
+                        v_flag = getflag(v_uri, Flag.AttrValue)
                         v_cns = [indexvalue]
                         routers.append(Router(
                             uri=v_uri,
@@ -173,7 +211,7 @@ def register(config):
             uri = setschema(v['id'], app)
             index = v.get('index', None)
             uri = addindex(uri, index)
-            flag = getflag(uri, Type.Entity)
+            flag = getflag(uri, Flag.Entity)
             cns = v.get('cn', [])
             # 实体类
             routers.append(Router(
@@ -190,7 +228,7 @@ def register(config):
             for e in entity.objects.all():
                 indexvalue = getattr(e, index)
                 e_uri = seturivalue(uri, indexvalue)
-                e_flag = getflag(e_uri, Type.EntityIndex)
+                e_flag = getflag(e_uri, Flag.EntityIndex)
                 e_cns = [indexvalue]
                 routers.append(Router(
                     uri=e_uri,
@@ -205,7 +243,7 @@ def generate_dic(path):
     生成领域词汇字典供 jieba 使用
     """
     word_frequency = 233333
-    tag = 'poke'
+    tag = DOMAIN_WORD_FLAG
     with open(path, 'w') as f:
         for e in Router.objects.distinct('cns'):
             for cn in e.cns:

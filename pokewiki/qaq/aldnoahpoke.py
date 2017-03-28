@@ -1,6 +1,7 @@
 import os
 from .aldnoah import (
     Aldnoah, preprocess, strategy, retrieve, answerengine,
+    router,
 )
 
 
@@ -16,7 +17,6 @@ POKE_DICT_NAME = 'pokedict'
 
 aldnoah = (Aldnoah()
            .add_preprocessor(preprocess.JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
-           .add_preprocessor(preprocess.DwrProcessor('poke'))
            .add_strategy(strategy.InfoExtractStrategy(priority=5))
            .set_retrieve(retrieve.DjangoRetrieve())
            .set_answereg(answerengine.DjangoAnswerEngine())

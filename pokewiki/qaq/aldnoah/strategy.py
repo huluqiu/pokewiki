@@ -1,4 +1,5 @@
-from .models import Question, Query, QuestionType
+from .models import Question, Query, QuestionType, DomainCell
+from .router import Flag, Sign
 from . import router
 
 
@@ -14,13 +15,6 @@ class Strategy(object):
         pass
 
 
-def _popfromqueue(q, default=None):
-    try:
-        return q.popleft()
-    except IndexError:
-        return default
-
-
 class InfoExtractStrategy(Strategy):
 
     """Docstring for InfoExtractStrategy. """
@@ -30,15 +24,15 @@ class InfoExtractStrategy(Strategy):
         # 属性值配对模式, key 代表窗口大小
         self._pairpattern = {
             1: [
-                ('wv',),
+                (Flag.AttrValue,),
             ],
             2: [
-                ('wa', '*'),
-                ('*', 'wa')
+                (Flag.Attribute, Flag.Value),
+                (Flag.Value, Flag.Attribute),
             ],
             3: [
-                ('wa', 'sign', '*'),
-                ('*', '的', 'wa'),
+                (Flag.Attribute, Flag.Sign, Flag.Value),
+                (Flag.Value, '的', Flag.Attribute),
             ],
         }
         # 不可能作为属性值的词性
@@ -57,8 +51,12 @@ class InfoExtractStrategy(Strategy):
         self._signs = {
             '=': ['是', '为', '等于'],
             '>': ['大于'],
+            '>=': ['大于等于', '不小于'],
             '<': ['小于'],
+            '<=': ['小于等于', '不大于'],
             '@>': ['包含', '包括', '有'],
+            '!=': ['不是', '不为', '不等于'],
+            '!@>': ['不包含', '不包括', '没有'],
         }
         # 展开符号字典
         flattensigns = {}
@@ -67,163 +65,184 @@ class InfoExtractStrategy(Strategy):
                 flattensigns[e] = key
         self._flattensigns = flattensigns
 
-    def analyze(self, qobj: Question):
-        # 1. 筛选 uri 和 flag
-        # 2. 属性值配对
-        # 3. 得出 conditions
-        # 4. 确定 target 和 model
-        # 5. 生成 query 放进 qobj
-        domainwords_filter = []
-        length = len(qobj.domainwords)
-        weights = [[0 for e in range(len(uris))] for word, uris in qobj.domainwords]
-        for i in range(length):
-            uris1 = qobj.domainwords[i][1]
-            weight1 = weights[i]
-            for j in range(i + 1, length):
-                uris2 = qobj.domainwords[j][1]
-                weight2 = weights[j]
-                for m, value1 in enumerate(uris1):
-                    w1 = weight1[m]
-                    for n, value2 in enumerate(uris2):
-                        w2 = weight2[n]
-                        if router.match(value1['uri'], value2['uri']):
-                            weight1[m] = w1 + 1
-                            weight2[n] = w2 + 1
-                weights[j] = weight2
-            weights[i] = weight1
-        for i in range(length):
-            word, uris = qobj.domainwords[i]
-            weight = weights[i]
-            index = 0
-            for j, value in enumerate(weight):
-                if j == index:
+    def _filteruri(self, segment):
+        """筛选 uri 和 flag"""
+        domainwords = []
+        for word, flag in segment:
+            if router.is_domainword(flag):
+                domainwords.append((word, router.geturi(word)))
+        # 为每个 uri 初始化权值
+        weightss = [[0 for _ in uris] for word, uris in domainwords]
+        # 计算每个 uri 的权值
+        for i, uris_i in enumerate(domainwords):
+            weights_i = weightss[i]
+            for j, uris_j in enumerate(domainwords[i + 1:]):
+                weights_j = weightss[i + 1 + j]
+                for m, uri_m in enumerate(uris_i[1]):
+                    for n, uri_n in enumerate(uris_j[1]):
+                        if router.match(uri_m['uri'], uri_n['uri']):
+                            weights_i[m] = weights_i[m] + 1
+                            weights_j[n] = weights_j[n] + 1
+        # 根据 uri 的权值筛选 uri
+        # 规则: 权值大, uri 路径短
+        domaincells = []
+        for i, value in enumerate(domainwords):
+            word, uri_flags = value
+            weights = weightss[i]
+            for j, weight in enumerate(weights):
+                if j == 0:
+                    max_index = j
+                    max_weight = weights[j]
                     continue
-                max_weight = weight[index]
-                if value > max_weight:
-                    index = j
-                elif value == max_weight:
-                    l1 = len(uris[index]['uri'].split('/'))
-                    l2 = len(uris[j]['uri'].split('/'))
+                if weight > max_weight:
+                    max_index = j
+                    max_weight = weight
+                elif weight == max_weight:
+                    l1 = router.lenofuri(uri_flags[max_index]['uri'])
+                    l2 = router.lenofuri(uri_flags[j]['uri'])
                     if l2 < l1:
-                        index = j
-            domainwords_filter.append({
-                'word': word,
-                'uri': uris[index]['uri'],
-                'flag': uris[index]['flag']
-            })
-        # qobj.domainwords = domainwords_filter
+                        max_index = j
+            domaincells.append(
+                DomainCell(
+                    word=word,
+                    uri=uri_flags[max_index]['uri'],
+                    flag=uri_flags[max_index]['flag']
+                )
+            )
+        return domaincells
 
-        # 2
-        domainwords_attr = list(filter(lambda n:
-                                       n['flag'] == 'wa' or n['flag'] == 'wv',
-                                       domainwords_filter))
+    def _pairing(self, domaincells, segment):
+        """属性值配对"""
+        # segment 中 domainword 的位置到 domaincells 的映射
+        seg2domain = list(filter(lambda n:
+                                 router.is_domainword(segment[n][1]),
+                                 range(len(segment))))
 
-        pairs = []
-        if len(domainwords_attr) > 0:
+        def pair_attribute(word, flag, index, **kwargs):
+            if flag == Flag.Attribute.value:
+                return {'attribute': domaincells[seg2domain.index(index)]}
 
-            def patternmatch(segment, index, pattern, pairs):
-                pattern = list(pattern)
-                attribute = ''
-                sign = ''
-                value = ''
-                for i, v in enumerate(pattern):
-                    word, flag = segment[index + i]
-                    if flag['match'] is True:
-                        return False
-                    if v == '*':
-                        if (word in self._viwords or
-                                flag['flag'] in self._viflags or
-                                word in self._flattensigns.keys()):
-                            return False
-                        else:
-                            value = word
-                    elif v == 'sign':
-                        if word not in self._flattensigns.keys():
-                            return False
-                        else:
-                            sign = self._flattensigns[word]
-                    else:
-                        if word != v and flag['flag'] != v:
-                            return False
-                        else:
-                            attribute = flag
-                for word, flag in segment[index:index + len(pattern)]:
-                    flag['match'] = True
-                if attribute and sign and value:
-                    pair = '%s%s%s' % (attribute['uri'], sign, value)
-                    pair = {'uri': pair, 'flag': 'wp'}
-                elif attribute and value:
-                    pair = '%s=%s' % (attribute['uri'], value)
-                    pair = {'uri': pair, 'flag': 'wp'}
-                elif attribute:
-                    if attribute['flag'] == 'wv':
-                        pair = attribute['uri']
-                        pair = {'uri': pair, 'flag': 'wp'}
-                    else:
-                        pair = ''
+        def pair_sign(word, **kwargs):
+            if word in self._flattensigns.keys():
+                return {'sign': self._flattensigns[word]}
+
+        def pair_value(word, flag, index, **kwargs):
+            q_invalid_word = word not in self._viwords and word not in self._flattensigns.keys()
+            q_invalid_flag = flag not in self._viflags
+            if q_invalid_word and q_invalid_flag:
+                if flag == Flag.AttrValue.value:
+                    return {'value': domaincells[seg2domain.index(index)]}
+                return {'value': word}
+
+        def pair_av(flag, index, **kwargs):
+            if flag == Flag.AttrValue.value:
+                return {'value': domaincells[seg2domain.index(index)]}
+
+        def pair_else(element, word, **kwargs):
+            if element == word:
+                return {}
+
+        # 表驱动
+        pairfunc_dict = {
+            Flag.Attribute: pair_attribute,
+            Flag.Sign: pair_sign,
+            Flag.Value: pair_value,
+            Flag.AttrValue: pair_av,
+            'else': pair_else,
+        }
+        # 为每个 word 打上 match 标记
+        match_flags = [False for _ in segment]
+
+        def patternmatch(segment, start, pattern):
+            pairs = {}
+            for index, element in enumerate(pattern):
+                if match_flags[start + index]:
+                    return False
+                word, flag = segment[start + index]
+                if flag == router.DOMAIN_WORD_FLAG:
+                    flag = domaincells[seg2domain.index(start + index)].flag
+                pairfunc = pairfunc_dict.get(element, pair_else)
+                pair = pairfunc(
+                    element=element,
+                    word=word,
+                    flag=flag,
+                    index=start + index,
+                )
+                if pair is None:
+                    return False
+                pairs.update(pair)
+            # 没返回, 说明配对成功
+            for i in range(index, index + len(pattern)):
+                match_flags[i] = True
+            attribute = pairs.get('attribute', None)
+            sign = pairs.get('sign', Sign.Equal.value)
+            value = pairs.get('value', None)
+            if attribute and value:
+                if isinstance(value, DomainCell):
+                    uri = value.uri
+                    value.flag = Flag.Value.value
                 else:
-                    pair = ''
-                if pair:
-                    pairs.append(pair)
+                    uri = '%s%s%s' % (attribute.uri, sign, value)
+                attribute.uri = uri
+                attribute.flag = Flag.Paired.value
                 return True
+            elif value:
+                value.flag = Flag.Paired.value
+                return True
+            return False
 
-            segment_domainflag = []
-            domainwords_iter = iter(domainwords_filter)
-            for word, flag in qobj.segment:
-                if flag == 'poke':
-                    flag = next(domainwords_iter)
-                else:
-                    flag = {'flag': flag}
-                flag['match'] = False
-                segment_domainflag.append((word, flag))
+        patternkey = list(self._pairpattern.keys())
+        patternkey.sort(reverse=True)
+        for key in patternkey:
+            patterns = self._pairpattern[key]
+            for pattern in patterns:
+                index = 0
+                len_pattern = len(pattern)
+                while(index + len_pattern <= len(segment)):
+                    match = patternmatch(segment, index, pattern)
+                    index += len_pattern if match else 1
+                # 检查是否全配对
+                cellsnotmatch = list(filter(lambda cell:
+                                            cell.flag == Flag.Attribute.value or
+                                            cell.flag == Flag.AttrValue.value,
+                                            domaincells))
+                if len(cellsnotmatch) == 0:
+                    return list(filter(lambda cell:
+                                       cell.flag != Flag.Value.value,
+                                       domaincells))
+        return list(filter(lambda cell:
+                           cell.flag != Flag.Value.value,
+                           domaincells))
 
-            allmatch = False
-            patternkey = iter([3, 2, 1])
-            while(not allmatch):
-                try:
-                    patterns = iter(self._pairpattern[next(patternkey)])
-                except StopIteration:
-                    break
-                while(not allmatch):
-                    try:
-                        pattern = next(patterns)
-                    except StopIteration:
-                        break
-                    index = 0
-                    l_pattern = len(pattern)
-                    while(index + l_pattern <= len(segment_domainflag)):
-                        ismatch = patternmatch(segment_domainflag, index, pattern, pairs)
-                        if ismatch:
-                            index = index + l_pattern
-                        else:
-                            index = index + 1
-                    # 检查是否全部配对
-                    for v in domainwords_attr:
-                        if v['match'] is False:
-                            allmatch = False
-                            break
-                        else:
-                            allmatch = True
-        # setattr(qobj, 'pairs', pairs)
+    def _querygenerate(self, domaincells):
+        """确定 model, target 和 condition"""
+        model = list(map(lambda cell:
+                         router.getmodel(cell.uri),
+                         domaincells))
+        model = model[0] if len(set(model)) == 1 else ''
+        target = list(filter(lambda cell:
+                             cell.flag == Flag.Attribute.value or
+                             cell.flag == Flag.Entity.value,
+                             domaincells))
+        condition = list(filter(lambda cell:
+                                cell.flag == Flag.AttrValue.value or
+                                cell.flag == Flag.Paired.value,
+                                domaincells))
+        print(model, target, condition)
+        return Query(model, target, condition)
 
-        # 3
-        domainwords_filter = list(filter(lambda n: not n.get('match', False), domainwords_filter))
-        keys = {'uri', 'flag'}
-        uris = list(map(lambda n: {key: value for key, value in n.items() if key in keys}, domainwords_filter))
-        uris.extend(pairs)
-        # setattr(qobj, 'uris', uris)
-
-        # 4. 确定问题类型
-        target = []
-        condition = []
-        for uri in uris:
-            if uri['flag'] in ['wa', 'we']:
-                target.append(uri['uri'])
-            else:
-                condition.append(uri['uri'])
-        qobj.type = QuestionType.Specific if len(target) > 0 else QuestionType.Bool
-        if target:
-            model = router.getmodel(target[0])
+    def _questiontype(self, query: Query):
+        q = len(query.condition) == 1 and query.condition[0].flag == 'wi'
+        if not query.target and not q:
+            return QuestionType.Bool
         else:
-            model = router.getmodel(condition[0])
-        qobj.query = Query(model=model, target=target, condition=condition)
+            return QuestionType.Specific
+
+    def analyze(self, qobj: Question):
+        domaincells = self._filteruri(qobj.segment)
+        qobj.domaincells = self._pairing(domaincells, qobj.segment)
+        for cell in qobj.domaincells:
+            print(cell.word, cell.uri, cell.flag)
+        print('----------------')
+        qobj.query = self._querygenerate(qobj.domaincells)
+        qobj.type = self._questiontype(qobj.query)

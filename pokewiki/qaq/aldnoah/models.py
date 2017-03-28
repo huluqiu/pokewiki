@@ -1,32 +1,14 @@
 from enum import Enum
 
 
-class Query(object):
+class DomainCell(object):
 
-    """Docstring for Query. """
+    """Docstring for DomainCell. """
 
-    class Sign(Enum):
-        Equal = '='
-        Great = '>'
-        GreatTE = '>='
-        Less = '<'
-        LessTE = '<='
-        Contain = '@>'
-        In = '<@'
-        NotEqual = '!='
-        NotContain = '!@>'
-        NotIn = '!<@'
-
-    def __init__(self, model=None, target=None, condition=None):
-        # 对应 from
-        # eg: 'Pokemon'
-        self.model = model
-        # 对应 select
-        # eg: ['id', 'name_en']
-        self.target = target
-        # 对应 where
-        # eg: [('name', '=', '皮卡丘'), ...]
-        self.condition = condition
+    def __init__(self, word, uri=None, flag=None):
+        self.word = word
+        self.uri = uri
+        self.flag = flag
 
 
 class QuestionType(Enum):
@@ -40,10 +22,26 @@ class Question(object):
 
     def __init__(self, question):
         self.question = question
-        self.segment = []
-        self.domainwords = []
+        self.segment = None
+        self.domaincells = None
         self.type = None
         self.query = None
+
+
+class Query(object):
+
+    """Docstring for Query. """
+
+    def __init__(self, model=None, target=None, condition=None):
+        # 对应 from
+        # eg: 'Pokemon'
+        self.model = model
+        # 对应 select
+        # eg: ['qaq://Pokemon:name/moves:name']
+        self.target = target
+        # 对应 where
+        # eg: ['qaq://Pokemon:name=皮卡丘', 'qaq://Pokemon:name/moves:name/power=80']
+        self.condition = condition
 
 
 class Answer(object):
