@@ -33,7 +33,6 @@ class DjangoRetrieve(Retrieve):
         }
 
     def retrieve(self, query: Query):
-        return
         try:
             md = getattr(models, query.model)
         except AttributeError:

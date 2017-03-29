@@ -1,5 +1,4 @@
 from .models import Question
-from . import router
 import jieba
 import jieba.posseg as pseg
 
@@ -27,21 +26,8 @@ class JiebaProcessor(Preprocessor):
     def __init__(self, path):
         Preprocessor.__init__(self)
         jieba.load_userdict(path)
+        self.jieba = jieba
 
     def process(self, qobj: Question):
         qobj.segment = pseg.cut(qobj.question, HMM=False)
         qobj.segment = [(word, flag) for (word, flag) in qobj.segment]
-
-
-class DwrProcessor(Preprocessor):
-
-    """领域词汇识别"""
-
-    def __init__(self, flag):
-        Preprocessor.__init__(self)
-        self._flag = flag
-
-    def process(self, qobj: Question):
-        for word, flag in qobj.segment:
-            if flag == self._flag:
-                qobj.domainwords.append((word, router.geturi(word)))

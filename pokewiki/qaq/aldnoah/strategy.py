@@ -172,7 +172,7 @@ class InfoExtractStrategy(Strategy):
                     return False
                 pairs.update(pair)
             # 没返回, 说明配对成功
-            for i in range(index, index + len(pattern)):
+            for i in range(start, start + len(pattern)):
                 match_flags[i] = True
             attribute = pairs.get('attribute', None)
             sign = pairs.get('sign', Sign.Equal.value)
@@ -226,9 +226,9 @@ class InfoExtractStrategy(Strategy):
                              domaincells))
         condition = list(filter(lambda cell:
                                 cell.flag == Flag.AttrValue.value or
-                                cell.flag == Flag.Paired.value,
+                                cell.flag == Flag.Paired.value or
+                                cell.flag == Flag.EntityIndex.value,
                                 domaincells))
-        print(model, target, condition)
         return Query(model, target, condition)
 
     def _questiontype(self, query: Query):
@@ -241,8 +241,5 @@ class InfoExtractStrategy(Strategy):
     def analyze(self, qobj: Question):
         domaincells = self._filteruri(qobj.segment)
         qobj.domaincells = self._pairing(domaincells, qobj.segment)
-        for cell in qobj.domaincells:
-            print(cell.word, cell.uri, cell.flag)
-        print('----------------')
         qobj.query = self._querygenerate(qobj.domaincells)
         qobj.type = self._questiontype(qobj.query)

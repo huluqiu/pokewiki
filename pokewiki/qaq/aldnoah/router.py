@@ -55,18 +55,6 @@ def is_domainword(flag):
     return flag == DOMAIN_WORD_FLAG
 
 
-def is_attribute(flag):
-    return flag == Flag.Attribute or flag == Flag.AttrValue
-
-
-def is_target(flag):
-    return flag == Flag.Attribute or flag == Flag.Entity
-
-
-def is_condition(flag):
-    return flag == Flag.Paired or flag == Flag.EntityIndex
-
-
 def match(uri1, uri2):
     uri1 = getbody(uri1).lower().split('=')[0]
     uri2 = getbody(uri2).lower().split('=')[0]
@@ -117,10 +105,6 @@ def getattribute(uri):
     return attribute
 
 
-def getflag(url, t: Flag):
-    return t.value
-
-
 def getschema(uri):
     return uri.split('://')[0]
 
@@ -133,19 +117,23 @@ def setschema(uri, schema):
     return '%s://%s' % (schema, path)
 
 
-def seturivalue(uri, value):
+def _getflag(url, t: Flag):
+    return t.value
+
+
+def _seturivalue(uri, value):
     if not value:
         return uri
     return '%s=%s' % (uri, value)
 
 
-def appenduri(uri, path):
+def _appenduri(uri, path):
     if not path:
         return uri
     return '%s/%s' % (uri, path)
 
 
-def addindex(uri, index):
+def _addindex(uri, index):
     if not index:
         return uri
     return '%s:%s' % (uri, index)
@@ -157,8 +145,8 @@ def register(config):
     def traverse_attr(uri, attribute):
         routers = []
         for k, v in attribute.items():
-            a_uri = appenduri(uri, k)
-            flag = getflag(a_uri, Flag.Attribute)
+            a_uri = _appenduri(uri, k)
+            flag = _getflag(a_uri, Flag.Attribute)
             if isinstance(v, list):
                 # 属性值
                 cns = v
@@ -167,8 +155,8 @@ def register(config):
                 cns = v.get('cn', [])
                 index = v.get('index', None)
                 if index:
-                    a_uri = addindex(a_uri, index)
-                    flag = getflag(a_uri, Flag.Attribute)
+                    a_uri = _addindex(a_uri, index)
+                    flag = _getflag(a_uri, Flag.Attribute)
                 attribute = v.get('attribute', None)
                 if attribute:
                     routers.extend(traverse_attr(a_uri, attribute))
@@ -178,8 +166,8 @@ def register(config):
                     m = apps.get_model(app, model)
                     for v in m.objects.all():
                         indexvalue = getattr(v, index)
-                        v_uri = seturivalue(a_uri, indexvalue)
-                        v_flag = getflag(v_uri, Flag.AttrValue)
+                        v_uri = _seturivalue(a_uri, indexvalue)
+                        v_flag = _getflag(v_uri, Flag.AttrValue)
                         v_cns = [indexvalue]
                         routers.append(Router(
                             uri=v_uri,
@@ -210,8 +198,8 @@ def register(config):
                 continue
             uri = setschema(v['id'], app)
             index = v.get('index', None)
-            uri = addindex(uri, index)
-            flag = getflag(uri, Flag.Entity)
+            uri = _addindex(uri, index)
+            flag = _getflag(uri, Flag.Entity)
             cns = v.get('cn', [])
             # 实体类
             routers.append(Router(
@@ -227,8 +215,8 @@ def register(config):
             entity = apps.get_model(app, v['id'])
             for e in entity.objects.all():
                 indexvalue = getattr(e, index)
-                e_uri = seturivalue(uri, indexvalue)
-                e_flag = getflag(e_uri, Flag.EntityIndex)
+                e_uri = _seturivalue(uri, indexvalue)
+                e_flag = _getflag(e_uri, Flag.EntityIndex)
                 e_cns = [indexvalue]
                 routers.append(Router(
                     uri=e_uri,

@@ -15,10 +15,14 @@ POKE_DICT_NAME = 'pokedict'
 # router.register(_get_abs_path('map.yaml'))
 # router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 
+jieba_processor = preprocess.JiebaProcessor(_get_abs_path(POKE_DICT_NAME))
+infoextract_strategy = strategy.InfoExtractStrategy(priority=5)
+django_retrieve = retrieve.DjangoRetrieve()
+
 aldnoah = (Aldnoah()
-           .add_preprocessor(preprocess.JiebaProcessor(_get_abs_path(POKE_DICT_NAME)))
-           .add_strategy(strategy.InfoExtractStrategy(priority=5))
-           .set_retrieve(retrieve.DjangoRetrieve())
+           .add_preprocessor(jieba_processor)
+           .add_strategy(infoextract_strategy)
+           .set_retrieve(django_retrieve)
            .set_answereg(answerengine.DjangoAnswerEngine())
            )
 
