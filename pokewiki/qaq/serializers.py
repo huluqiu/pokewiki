@@ -20,3 +20,9 @@ class EggGroupSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = EggGroup
         fields = ('name', 'description', 'pokemon_set')
+
+
+class DomainCellSerializer(serializers.Serializer):
+    word = serializers.CharField(max_length=10)
+    uri = serializers.CharField(max_length=100)
+    flag = serializers.CharField(max_length=5)

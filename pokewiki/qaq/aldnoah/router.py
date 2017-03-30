@@ -4,14 +4,8 @@ from enum import Enum
 import re
 
 # uri: qaq://Pokemon:name
-# uri: qaq://Pokemon:name='皮卡丘'/name_en
-
-# uri: qaq://Move:name/power=max
-# uri: qaq://Move:name/type='水'
+# uri: qaq://Pokemon:name='皮卡丘'
 # uri: qaq://Move:name/name_en
-
-# uri: qaq://Pokemon/gen:id \ qaq://*/gen:id
-# uri: qaq://Move/gen:id    /
 
 # cn1 \
 # cn2 - >flag - > url
@@ -21,9 +15,11 @@ DOMAIN_WORD_FLAG = 'poke'
 
 Router = apps.get_model('qaq', 'Router')
 
-re_model = re.compile(r'(?<=://)\w+(?=:)')
-re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
-re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
+_re_model = re.compile(r'(?<=://)\w+(?=:)')
+_re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
+_re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
+
+_sign_map = {}
 
 
 class Flag(Enum):
@@ -41,13 +37,18 @@ class Flag(Enum):
 class Sign(Enum):
     Equal = '='
     Great = '>'
-    GreatTE = '>='
     Less = '<'
-    LessTE = '<='
     Contain = '@>'
+    GreatTE = '>='
+    LessTE = '<='
     In = '<@'
+    Not = '!'
     NotEqual = '!='
+    NotGreat = '!>'
+    NotLess = '!<'
     NotContain = '!@>'
+    NotGreatTE = '!>='
+    NotLessTE = '!<='
     NotIn = '!<@'
 
 
@@ -56,6 +57,11 @@ def is_domainword(flag):
 
 
 def match(uri1, uri2):
+    """判断 uri1 和 uri2 是否有关.
+
+    有关: qaq://Pokemon:name 和 qaq://Pokemon:name/moves:name
+    无关: qaq://Move:name 和 qaq://Ability:name
+    """
     uri1 = getbody(uri1).lower().split('=')[0]
     uri2 = getbody(uri2).lower().split('=')[0]
     return uri1 in uri2 or uri2 in uri1
@@ -72,6 +78,7 @@ def geturi(word):
 
 
 def getbody(uri):
+    """返回去掉 schema 的 uri."""
     return uri.split('://')[-1]
 
 
@@ -80,15 +87,23 @@ def lenofuri(uri):
 
 
 def getmodel(uri):
-    return re_model.search(uri).group()
+    return _re_model.search(uri).group()
 
 
 def getattribute(uri):
+    """返回 uri 中的属性、sign和值(如果有sign和值).
+
+    uri: qaq://Pokemon:name=皮卡丘
+    return: (name, =, 皮卡丘)
+
+    uri: qaq://Pokemon:name
+    return: (name)
+    """
     uri = getbody(uri)
     uri = uri.split('/')
     if len(uri) == 1:
         uri = uri[0].split(':')[-1]
-        attribute = re_wa.match(uri).groups()
+        attribute = _re_wa.match(uri).groups()
     else:
         parent = ''
         for e in uri[1:-1]:
@@ -96,7 +111,7 @@ def getattribute(uri):
                 parent = e.split(':')[0]
             else:
                 parent = '%s/%s' % (parent, e.split(':')[0])
-        leaf = list(re_wa.match(uri[-1]).groups())
+        leaf = list(_re_wa.match(uri[-1]).groups())
         leaf[0] = leaf[0].replace(':', '/')
         if parent:
             leaf[0] = '%s/%s' % (parent, leaf[0])
@@ -117,20 +132,22 @@ def setschema(uri, schema):
     return '%s://%s' % (schema, path)
 
 
+def appenduri(uri, path=None, sign=None, value=None):
+    if path:
+        uri = '%s/%s' % (uri, path)
+    if sign:
+        if not isinstance(sign, Sign):
+            raise TypeError('sign must be Sign, but %s', sign)
+        uri = '%s%s' % (uri, sign.value)
+    if value:
+        if not sign:
+            uri = '%s%s' % (uri, Sign.Equal.value)
+        uri = '%s%s' % (uri, value)
+    return uri
+
+
 def _getflag(url, t: Flag):
     return t.value
-
-
-def _seturivalue(uri, value):
-    if not value:
-        return uri
-    return '%s=%s' % (uri, value)
-
-
-def _appenduri(uri, path):
-    if not path:
-        return uri
-    return '%s/%s' % (uri, path)
 
 
 def _addindex(uri, index):
@@ -139,13 +156,23 @@ def _addindex(uri, index):
     return '%s:%s' % (uri, index)
 
 
-# 根据 yaml 配置, 注册 uri
-def register(config):
+def _flattendict(d):
+    r = {}
+    for k, v in d.items():
+        for e in v:
+            r[e] = k
+    return r
 
+
+def register_domainuri(path):
+    """根据 yaml 配置, 注册 uri.
+
+    :param path: path of yaml
+    """
     def traverse_attr(uri, attribute):
         routers = []
         for k, v in attribute.items():
-            a_uri = _appenduri(uri, k)
+            a_uri = appenduri(uri, path=k)
             flag = _getflag(a_uri, Flag.Attribute)
             if isinstance(v, list):
                 # 属性值
@@ -166,7 +193,7 @@ def register(config):
                     m = apps.get_model(app, model)
                     for v in m.objects.all():
                         indexvalue = getattr(v, index)
-                        v_uri = _seturivalue(a_uri, indexvalue)
+                        v_uri = appenduri(a_uri, value=indexvalue)
                         v_flag = _getflag(v_uri, Flag.AttrValue)
                         v_cns = [indexvalue]
                         routers.append(Router(
@@ -183,7 +210,7 @@ def register(config):
             ))
         return routers
 
-    with open(config, 'r') as f:
+    with open(path, 'r') as f:
         d = yaml.load(f.read())
         app = d.get('app', None)
         if not app:
@@ -215,7 +242,7 @@ def register(config):
             entity = apps.get_model(app, v['id'])
             for e in entity.objects.all():
                 indexvalue = getattr(e, index)
-                e_uri = _seturivalue(uri, indexvalue)
+                e_uri = appenduri(uri, value=indexvalue)
                 e_flag = _getflag(e_uri, Flag.EntityIndex)
                 e_cns = [indexvalue]
                 routers.append(Router(
@@ -237,3 +264,42 @@ def generate_dic(path):
             for cn in e.cns:
                 line = '%s %s %s\n' % (cn, word_frequency, tag)
                 f.write(line)
+
+
+def register_signs(path):
+    """注册 signs, 如 =, > 等等.
+
+    :param path: yaml 地址
+    """
+    with open(path, 'r') as f:
+        d = yaml.load(f.read())
+        _sign_map.update(_flattendict(d))
+
+
+def is_sign(word):
+    return word in _sign_map
+
+
+def getsign(word):
+    try:
+        sign = Sign(word)
+    except ValueError:
+        word = _sign_map.get(word, None)
+        if word:
+            sign = Sign(word)
+        else:
+            sign = None
+    return sign
+
+
+def combinesigns(*signs):
+    if len(signs) == 1:
+        return signs[0]
+    v = ''
+    for sign in signs:
+        v += sign.value
+    try:
+        sign = Sign(v)
+    except ValueError:
+        return None
+    return sign

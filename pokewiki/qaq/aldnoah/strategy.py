@@ -1,6 +1,9 @@
 from .models import Question, Query, QuestionType, DomainCell
 from .router import Flag, Sign
 from . import router
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Strategy(object):
@@ -22,19 +25,16 @@ class InfoExtractStrategy(Strategy):
     def __init__(self, priority):
         Strategy.__init__(self, priority)
         # 属性值配对模式, key 代表窗口大小
-        self._pairpattern = {
-            1: [
-                (Flag.AttrValue,),
-            ],
-            2: [
-                (Flag.Attribute, Flag.Value),
-                (Flag.Value, Flag.Attribute),
-            ],
-            3: [
-                (Flag.Attribute, Flag.Sign, Flag.Value),
-                (Flag.Value, '的', Flag.Attribute),
-            ],
-        }
+        self._pairpattern = [
+            (Flag.Attribute, Flag.Sign, Flag.Sign, Flag.Sign, Flag.Value),
+            (Flag.Attribute, Flag.Sign, Flag.Sign, Flag.Value),
+            (Flag.Sign, Flag.Value, Flag.Attribute),
+            (Flag.Attribute, Flag.Sign, Flag.Value),
+            (Flag.Value, '的', Flag.Attribute),
+            (Flag.Attribute, Flag.Value),
+            (Flag.Value, Flag.Attribute),
+            (Flag.AttrValue,),
+        ]
         # 不可能作为属性值的词性
         self._viflags = [
             'uj',   # 的
@@ -47,23 +47,6 @@ class InfoExtractStrategy(Strategy):
         self._viwords = [
             '能', '系'
         ]
-        # 代表赋值的词
-        self._signs = {
-            '=': ['是', '为', '等于'],
-            '>': ['大于'],
-            '>=': ['大于等于', '不小于'],
-            '<': ['小于'],
-            '<=': ['小于等于', '不大于'],
-            '@>': ['包含', '包括', '有'],
-            '!=': ['不是', '不为', '不等于'],
-            '!@>': ['不包含', '不包括', '没有'],
-        }
-        # 展开符号字典
-        flattensigns = {}
-        for key, value in self._signs.items():
-            for e in value:
-                flattensigns[e] = key
-        self._flattensigns = flattensigns
 
     def _filteruri(self, segment):
         """筛选 uri 和 flag"""
@@ -117,17 +100,25 @@ class InfoExtractStrategy(Strategy):
         seg2domain = list(filter(lambda n:
                                  router.is_domainword(segment[n][1]),
                                  range(len(segment))))
+        signs = None
 
         def pair_attribute(word, flag, index, **kwargs):
             if flag == Flag.Attribute.value:
                 return {'attribute': domaincells[seg2domain.index(index)]}
 
         def pair_sign(word, **kwargs):
-            if word in self._flattensigns.keys():
-                return {'sign': self._flattensigns[word]}
+            global signs
+            if router.is_sign(word):
+                if not signs:
+                    signs = router.getsign(word)
+                else:
+                    sign = router.getsign(word)
+                    signs = router.combinesigns(signs, sign)
+                if signs:
+                    return {'sign': signs.value}
 
         def pair_value(word, flag, index, **kwargs):
-            q_invalid_word = word not in self._viwords and word not in self._flattensigns.keys()
+            q_invalid_word = word not in self._viwords and not router.is_sign(word)
             q_invalid_flag = flag not in self._viflags
             if q_invalid_word and q_invalid_flag:
                 if flag == Flag.AttrValue.value:
@@ -154,14 +145,19 @@ class InfoExtractStrategy(Strategy):
         match_flags = [False for _ in segment]
 
         def patternmatch(segment, start, pattern):
+            global signs
+            signs = None
             pairs = {}
+            logger.debug('pattern: %s', pattern)
             for index, element in enumerate(pattern):
                 if match_flags[start + index]:
                     return False
                 word, flag = segment[start + index]
+                logger.debug('element: %s, word: %s, flag: %s', element, word, flag)
                 if flag == router.DOMAIN_WORD_FLAG:
                     flag = domaincells[seg2domain.index(start + index)].flag
                 pairfunc = pairfunc_dict.get(element, pair_else)
+                logger.debug('func: %s', pairfunc)
                 pair = pairfunc(
                     element=element,
                     word=word,
@@ -169,8 +165,10 @@ class InfoExtractStrategy(Strategy):
                     index=start + index,
                 )
                 if pair is None:
+                    logger.debug('not match, return!')
                     return False
                 pairs.update(pair)
+                logger.debug('match, pairs: %s', pairs)
             # 没返回, 说明配对成功
             for i in range(start, start + len(pattern)):
                 match_flags[i] = True
@@ -179,7 +177,7 @@ class InfoExtractStrategy(Strategy):
             value = pairs.get('value', None)
             if attribute and value:
                 if isinstance(value, DomainCell):
-                    uri = value.uri
+                    uri = '%s%s%s' % (attribute.uri, sign, value.word)
                     value.flag = Flag.Value.value
                 else:
                     uri = '%s%s%s' % (attribute.uri, sign, value)
@@ -191,25 +189,21 @@ class InfoExtractStrategy(Strategy):
                 return True
             return False
 
-        patternkey = list(self._pairpattern.keys())
-        patternkey.sort(reverse=True)
-        for key in patternkey:
-            patterns = self._pairpattern[key]
-            for pattern in patterns:
-                index = 0
-                len_pattern = len(pattern)
-                while(index + len_pattern <= len(segment)):
-                    match = patternmatch(segment, index, pattern)
-                    index += len_pattern if match else 1
-                # 检查是否全配对
-                cellsnotmatch = list(filter(lambda cell:
-                                            cell.flag == Flag.Attribute.value or
-                                            cell.flag == Flag.AttrValue.value,
-                                            domaincells))
-                if len(cellsnotmatch) == 0:
-                    return list(filter(lambda cell:
-                                       cell.flag != Flag.Value.value,
-                                       domaincells))
+        for pattern in self._pairpattern:
+            index = 0
+            len_pattern = len(pattern)
+            while(index + len_pattern <= len(segment)):
+                match = patternmatch(segment, index, pattern)
+                index += len_pattern if match else 1
+            # 检查是否全配对
+            cellsnotmatch = list(filter(lambda cell:
+                                        cell.flag == Flag.Attribute.value or
+                                        cell.flag == Flag.AttrValue.value,
+                                        domaincells))
+            if len(cellsnotmatch) == 0:
+                return list(filter(lambda cell:
+                                   cell.flag != Flag.Value.value,
+                                   domaincells))
         return list(filter(lambda cell:
                            cell.flag != Flag.Value.value,
                            domaincells))

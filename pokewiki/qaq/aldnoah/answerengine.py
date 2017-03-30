@@ -1,4 +1,5 @@
 from .models import Question, Answer, QuestionType
+from qaq.serializers import DomainCellSerializer
 
 
 class AnswerEngine(object):
@@ -28,9 +29,10 @@ class DjangoAnswerEngine(AnswerEngine):
             answer = queryset
         return {
             'question': qobj.question,
-            'answer': answer,
-            # 'query': {
-                # 'target': qobj.query.target,
-                # 'condition': qobj.query.condition,
-            # },
+            'segment': str(qobj.segment),
+            # 'answer': answer,
+            'query': {
+                'target': [DomainCellSerializer(cell).data for cell in qobj.query.target],
+                'condition': [DomainCellSerializer(cell).data for cell in qobj.query.condition],
+            },
         }
