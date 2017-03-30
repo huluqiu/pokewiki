@@ -1,5 +1,5 @@
 from .models import Question, Query, QuestionType, DomainCell
-from .router import Flag, Sign
+from .router import Flag, Sign, AggregateFunc
 from . import router
 import logging
 
@@ -31,22 +31,38 @@ class InfoExtractStrategy(Strategy):
             (Flag.Sign, Flag.Value, Flag.Attribute),
             (Flag.Attribute, Flag.Sign, Flag.Value),
             (Flag.Value, '的', Flag.Attribute),
+            (Flag.Attribute, '的', Flag.AggregateFunc),
+            (Flag.Attribute, Flag.Sign, Flag.AggregateFunc),
             (Flag.Attribute, Flag.Value),
             (Flag.Value, Flag.Attribute),
+            (Flag.Sign, Flag.Sign, Flag.AttrValue),
+            (Flag.Attribute, Flag.AggregateFunc),
+            (Flag.AggregateFunc, Flag.Attribute),
             (Flag.AttrValue,),
         ]
-        # 不可能作为属性值的词性
-        self._viflags = [
-            'uj',   # 的
-            'p',    # 介词
-            'u',    # 助词
-            'r',    # 代词
-            'c',    # 连词
-            'we', 'wi', 'wa',
-        ]
-        self._viwords = [
-            '能', '系'
-        ]
+
+    def addpattern(self, pattern):
+        def add(self, pattern):
+            l = len(pattern)
+            patterns = self._pairpattern.get(l, None)
+            if not patterns:
+                patterns = []
+                self._pairpattern[l] = patterns
+            patterns.append(pattern)
+        # check valid
+        self._pairpattern
+        pattern = [Flag(e) for e in pattern]
+        # sign
+        try:
+            signindex = pattern.index(Flag.Sign)
+        except ValueError:
+            add(pattern)
+        else:
+            pattern_2sign = [e for e in pattern].insert(signindex, Flag.Sign)
+            pattern_3sign = [e for e in pattern_2sign].insert(signindex, Flag.Sign)
+            add(pattern)
+            add(pattern_2sign)
+            add(pattern_3sign)
 
     def _filteruri(self, segment):
         """筛选 uri 和 flag"""
@@ -118,9 +134,7 @@ class InfoExtractStrategy(Strategy):
                     return {'sign': signs.value}
 
         def pair_value(word, flag, index, **kwargs):
-            q_invalid_word = word not in self._viwords and not router.is_sign(word)
-            q_invalid_flag = flag not in self._viflags
-            if q_invalid_word and q_invalid_flag:
+            if router.is_value(word, flag):
                 if flag == Flag.AttrValue.value:
                     return {'value': domaincells[seg2domain.index(index)]}
                 return {'value': word}
@@ -128,6 +142,11 @@ class InfoExtractStrategy(Strategy):
         def pair_av(flag, index, **kwargs):
             if flag == Flag.AttrValue.value:
                 return {'value': domaincells[seg2domain.index(index)]}
+
+        def pair_aggregatefunc(word, **kwargs):
+            if router.is_aggregatefunc(word):
+                func = router.get_aggregatefunc(word)
+                return {'aggregatefunc': func.value}
 
         def pair_else(element, word, **kwargs):
             if element == word:
@@ -139,6 +158,7 @@ class InfoExtractStrategy(Strategy):
             Flag.Sign: pair_sign,
             Flag.Value: pair_value,
             Flag.AttrValue: pair_av,
+            Flag.AggregateFunc: pair_aggregatefunc,
             'else': pair_else,
         }
         # 为每个 word 打上 match 标记
@@ -175,6 +195,7 @@ class InfoExtractStrategy(Strategy):
             attribute = pairs.get('attribute', None)
             sign = pairs.get('sign', Sign.Equal.value)
             value = pairs.get('value', None)
+            aggregatefunc = pairs.get('aggregatefunc', None)
             if attribute and value:
                 if isinstance(value, DomainCell):
                     uri = '%s%s%s' % (attribute.uri, sign, value.word)
@@ -184,7 +205,13 @@ class InfoExtractStrategy(Strategy):
                 attribute.uri = uri
                 attribute.flag = Flag.Paired.value
                 return True
+            elif attribute and aggregatefunc:
+                attribute.uri = '%s%s%s' % (attribute.uri, sign, aggregatefunc)
+                attribute.flag = Flag.AggregateFunc.value
+                return True
             elif value:
+                if sign:
+                    value.uri = value.uri.replace('=', sign)
                 value.flag = Flag.Paired.value
                 return True
             return False
@@ -221,16 +248,17 @@ class InfoExtractStrategy(Strategy):
         condition = list(filter(lambda cell:
                                 cell.flag == Flag.AttrValue.value or
                                 cell.flag == Flag.Paired.value or
-                                cell.flag == Flag.EntityIndex.value,
+                                cell.flag == Flag.EntityIndex.value or
+                                cell.flag == Flag.AggregateFunc.value,
                                 domaincells))
         return Query(model, target, condition)
 
     def _questiontype(self, query: Query):
         q = len(query.condition) == 1 and query.condition[0].flag == 'wi'
         if not query.target and not q:
-            return QuestionType.Bool
+            return QuestionType.Bool.value
         else:
-            return QuestionType.Specific
+            return QuestionType.Specific.value
 
     def analyze(self, qobj: Question):
         domaincells = self._filteruri(qobj.segment)

@@ -7,13 +7,6 @@ class Preprocessor(object):
 
     """Docstring for Preprocessor. """
 
-    def __init__(self):
-        """TODO: to be defined1.
-
-        :question: TODO
-
-        """
-
     def process(self, qobj):
         return qobj
 
@@ -27,6 +20,11 @@ class JiebaProcessor(Preprocessor):
         Preprocessor.__init__(self)
         jieba.load_userdict(path)
         self.jieba = jieba
+        self._dynamicdic = [
+            ('最多', None, 'a'),
+        ]
+        for word, freq, tag in self._dynamicdic:
+            jieba.add_word(word, freq, tag)
 
     def process(self, qobj: Question):
         qobj.segment = pseg.cut(qobj.question, HMM=False)

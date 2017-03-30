@@ -21,6 +21,10 @@ _re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
 
 _sign_map = {}
 
+_aggregatefunc_map = {}
+
+_value_filter = set()
+
 
 class Flag(Enum):
     Entity = 'we'
@@ -31,6 +35,7 @@ class Flag(Enum):
     Relation = 'wr'
     Sign = 'ws'
     Paired = 'wp'
+    AggregateFunc = 'wg'
     Any = '*'
 
 
@@ -50,6 +55,14 @@ class Sign(Enum):
     NotGreatTE = '!>='
     NotLessTE = '!<='
     NotIn = '!<@'
+
+
+class AggregateFunc(Enum):
+    Avg = 'avg'
+    Count = 'count'
+    Max = 'max'
+    Min = 'min'
+    Sum = 'sum'
 
 
 def is_domainword(flag):
@@ -282,14 +295,11 @@ def is_sign(word):
 
 def getsign(word):
     try:
-        sign = Sign(word)
+        return Sign(word)
     except ValueError:
         word = _sign_map.get(word, None)
         if word:
-            sign = Sign(word)
-        else:
-            sign = None
-    return sign
+            return Sign(word)
 
 
 def combinesigns(*signs):
@@ -303,3 +313,48 @@ def combinesigns(*signs):
     except ValueError:
         return None
     return sign
+
+
+def register_aggregate(path):
+    """注册 aggregate functions.
+
+    :param path: yaml 地址
+    """
+    with open(path, 'r') as f:
+        d = yaml.load(f.read())
+        _aggregatefunc_map.update(_flattendict(d))
+
+
+def is_aggregatefunc(word):
+    return word in _aggregatefunc_map
+
+
+def get_aggregatefunc(word):
+    func = _aggregatefunc_map.get(word, None)
+    if func:
+        return AggregateFunc(func)
+
+
+def register_valuefilter(path):
+    """注册 value filter.
+
+    :param path: yaml 地址
+    """
+    with open(path, 'r') as f:
+        d = yaml.load(f.read())
+        for v in d.values():
+            for e in v:
+                _value_filter.add(e)
+
+
+def is_value(word, flag):
+    r = word not in _value_filter
+    r = r and flag not in _value_filter
+    r = r and flag not in [
+        Flag.Entity.value,
+        Flag.EntityIndex.value,
+        Flag.Attribute.value,
+    ]
+    r = r and not is_sign(word)
+    r = r and not is_aggregatefunc(word)
+    return r

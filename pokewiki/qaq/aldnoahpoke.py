@@ -14,6 +14,8 @@ debug = True
 
 POKE_DICT_NAME = 'pokedict'
 router.register_signs(_get_abs_path('yamls/signs.yaml'))
+router.register_aggregate(_get_abs_path('yamls/aggregatefunc.yaml'))
+router.register_valuefilter(_get_abs_path('yamls/valuefilter.yaml'))
 # router.register(_get_abs_path('yamls/router.yaml'))
 # router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 
@@ -45,6 +47,8 @@ def answer_test():
     with open(_get_abs_path('yamls/questions.yaml'), 'r') as f:
         d = yaml.load(f.read())
     # questions = d.get('aggregate')
+    # questions = d.get('sign')
+    # questions = d.get('test')
     questions = all(d)
     rs = []
     for q in questions:
