@@ -37,6 +37,7 @@ class Flag(Enum):
     Paired = 'wp'
     AggregateFunc = 'wg'
     Any = '*'
+    De = '的'
 
 
 class Sign(Enum):

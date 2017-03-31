@@ -24,25 +24,10 @@ class InfoExtractStrategy(Strategy):
 
     def __init__(self, priority):
         Strategy.__init__(self, priority)
-        # 属性值配对模式, key 代表窗口大小
-        self._pairpattern = [
-            (Flag.Attribute, Flag.Sign, Flag.Sign, Flag.Sign, Flag.Value),
-            (Flag.Attribute, Flag.Sign, Flag.Sign, Flag.Value),
-            (Flag.Sign, Flag.Value, Flag.Attribute),
-            (Flag.Attribute, Flag.Sign, Flag.Value),
-            (Flag.Value, '的', Flag.Attribute),
-            (Flag.Attribute, '的', Flag.AggregateFunc),
-            (Flag.Attribute, Flag.Sign, Flag.AggregateFunc),
-            (Flag.Attribute, Flag.Value),
-            (Flag.Value, Flag.Attribute),
-            (Flag.Sign, Flag.Sign, Flag.AttrValue),
-            (Flag.Attribute, Flag.AggregateFunc),
-            (Flag.AggregateFunc, Flag.Attribute),
-            (Flag.AttrValue,),
-        ]
+        self._pairpattern = {}
 
-    def addpattern(self, pattern):
-        def add(self, pattern):
+    def add_pairpattern(self, pattern):
+        def add(pattern):
             l = len(pattern)
             patterns = self._pairpattern.get(l, None)
             if not patterns:
@@ -50,7 +35,6 @@ class InfoExtractStrategy(Strategy):
                 self._pairpattern[l] = patterns
             patterns.append(pattern)
         # check valid
-        self._pairpattern
         pattern = [Flag(e) for e in pattern]
         # sign
         try:
@@ -58,8 +42,10 @@ class InfoExtractStrategy(Strategy):
         except ValueError:
             add(pattern)
         else:
-            pattern_2sign = [e for e in pattern].insert(signindex, Flag.Sign)
-            pattern_3sign = [e for e in pattern_2sign].insert(signindex, Flag.Sign)
+            pattern_2sign = [e for e in pattern]
+            pattern_2sign.insert(signindex, Flag.Sign)
+            pattern_3sign = [e for e in pattern_2sign]
+            pattern_3sign.insert(signindex, Flag.Sign)
             add(pattern)
             add(pattern_2sign)
             add(pattern_3sign)
@@ -215,22 +201,24 @@ class InfoExtractStrategy(Strategy):
                 value.flag = Flag.Paired.value
                 return True
             return False
-
-        for pattern in self._pairpattern:
-            index = 0
-            len_pattern = len(pattern)
-            while(index + len_pattern <= len(segment)):
-                match = patternmatch(segment, index, pattern)
-                index += len_pattern if match else 1
-            # 检查是否全配对
-            cellsnotmatch = list(filter(lambda cell:
-                                        cell.flag == Flag.Attribute.value or
-                                        cell.flag == Flag.AttrValue.value,
-                                        domaincells))
-            if len(cellsnotmatch) == 0:
-                return list(filter(lambda cell:
-                                   cell.flag != Flag.Value.value,
-                                   domaincells))
+        keys = list(self._pairpattern.keys())
+        keys.sort(reverse=True)
+        for key in keys:
+            for pattern in self._pairpattern[key]:
+                index = 0
+                len_pattern = len(pattern)
+                while(index + len_pattern <= len(segment)):
+                    match = patternmatch(segment, index, pattern)
+                    index += len_pattern if match else 1
+                # 检查是否全配对
+                cellsnotmatch = list(filter(lambda cell:
+                                            cell.flag == Flag.Attribute.value or
+                                            cell.flag == Flag.AttrValue.value,
+                                            domaincells))
+                if len(cellsnotmatch) == 0:
+                    return list(filter(lambda cell:
+                                       cell.flag != Flag.Value.value,
+                                       domaincells))
         return list(filter(lambda cell:
                            cell.flag != Flag.Value.value,
                            domaincells))

@@ -20,7 +20,13 @@ router.register_valuefilter(_get_abs_path('yamls/valuefilter.yaml'))
 # router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 
 jieba_processor = preprocess.JiebaProcessor(_get_abs_path(POKE_DICT_NAME))
+
 infoextract_strategy = strategy.InfoExtractStrategy(priority=5)
+with open(_get_abs_path('yamls/pattern.yaml'), 'r') as f:
+    d = yaml.load(f.read())
+    for pattern in d['pair']:
+        infoextract_strategy.add_pairpattern(pattern)
+
 django_retrieve = retrieve.DjangoRetrieve()
 
 aldnoah = (Aldnoah()
@@ -46,10 +52,10 @@ def answer_test():
         return l
     with open(_get_abs_path('yamls/questions.yaml'), 'r') as f:
         d = yaml.load(f.read())
-    # questions = d.get('aggregate')
+    questions = d.get('aggregate')
     # questions = d.get('sign')
     # questions = d.get('test')
-    questions = all(d)
+    # questions = all(d)
     rs = []
     for q in questions:
         rs.append(aldnoah.answer(q))

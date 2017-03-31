@@ -1,0 +1,20 @@
+# wa: attribute
+# ws: sign    eg: 是, 为, =, >, < ...
+# wv: value
+# wav: 能标记属性字段的 value
+# wg: aggregatefunc    eg: max, min...
+# *: any
+
+pair:
+  - [wa, ws, wv]
+  - [ws, wv, wa]
+  - [wv, '的', wa]
+  - [wa, wv]
+  - [wv, wa]
+  - [wav]
+  # aggregate
+  - [ws, wav]
+  - [wa, '的', wg]
+  - [wa, ws, wg]
+  - [wa, wg]
+  - [wg, wa]
