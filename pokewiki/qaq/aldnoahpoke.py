@@ -16,7 +16,6 @@ POKE_DICT_NAME = 'pokedict'
 router.register_signs(_get_abs_path('yamls/signs.yaml'))
 router.register_aggregate(_get_abs_path('yamls/aggregatefunc.yaml'))
 router.register_valuefilter(_get_abs_path('yamls/valuefilter.yaml'))
-# router.register(_get_abs_path('yamls/router.yaml'))
 # router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 
 jieba_processor = preprocess.JiebaProcessor(_get_abs_path(POKE_DICT_NAME))
