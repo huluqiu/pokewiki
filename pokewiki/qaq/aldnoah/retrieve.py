@@ -2,6 +2,9 @@ from .models import Query
 from . import router
 from .router import Sign
 from qaq import models
+from django.db.models import (
+    Q, F
+)
 
 
 class Retrieve(object):
@@ -38,8 +41,8 @@ class DjangoRetrieve(Retrieve):
             md = getattr(models, query.model)
         except AttributeError:
             return None
-        queryset = md.objects.all()
-        condition = {}
+        q_filter = Q()
+        q_exclude = Q()
         # filter
         for cell in query.condition:
             attribute, sign, value = router.getattribute(cell.uri)
@@ -52,22 +55,12 @@ class DjangoRetrieve(Retrieve):
             sign = self.sign_map[sign]
             # (a/b, @>, v) -> a__b__contains=v
             attribute = attribute + sign
-            if attribute in condition:
-                pre_value = condition.pop(attribute)[0]
-                if not isinstance(pre_value, list):
-                    pre_value = [pre_value]
-                pre_value.append(value)
-                value = pre_value
-                attribute = '%s__in' % attribute
-            condition[attribute] = (value, negative)
-
-        for k, v in condition.items():
-            value, negative = v
+            q = Q(**{attribute: value})
             if negative:
-                queryset = queryset.exclude(**{k: value})
+                q_exclude = q_exclude & q
             else:
-                queryset = queryset.filter(**{k: value})
-
+                q_filter = q_filter & q
+        queryset = md.objects.filter(q_filter).exclude(q_exclude)
         # values
         values = []
         for cell in query.target:

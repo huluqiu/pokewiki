@@ -52,9 +52,10 @@ def answer_test():
         return l
     with open(_get_abs_path('yamls/questions.yaml'), 'r') as f:
         d = yaml.load(f.read())
-    questions = d.get('aggregate')
+    # questions = d.get('specific')
+    # questions = d.get('aggregate')
     # questions = d.get('sign')
-    # questions = d.get('test')
+    questions = d.get('test')
     # questions = all(d)
     rs = []
     for q in questions:

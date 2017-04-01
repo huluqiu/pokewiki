@@ -135,7 +135,7 @@ class InfoExtractStrategy(Strategy):
                 return {'aggregatefunc': func.value}
 
         def pair_else(element, word, **kwargs):
-            if element == word:
+            if element == word or element.value == word:
                 return {}
 
         # 表驱动
