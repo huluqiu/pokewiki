@@ -44,19 +44,9 @@ def answer(question):
 
 
 def answer_test():
-    def all(d):
-        l = []
-        for v in d.values():
-            l.extend(v)
-        return l
     with open(_get_abs_path('yamls/questions.yaml'), 'r') as f:
         d = yaml.load(f.read())
-    # questions = d.get('specific')
-    # questions = d.get('aggregate')
-    # questions = d.get('sign')
-    questions = d.get('test')
-    # questions = all(d)
     rs = []
-    for q in questions:
+    for q in d:
         rs.append(aldnoah.answer(q))
     return rs
