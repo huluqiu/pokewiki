@@ -10,8 +10,6 @@ def _get_abs_path(path):
     return os.path.normpath(os.path.join(os.getcwd(), path))
 
 
-debug = True
-
 POKE_DICT_NAME = 'pokedict'
 router.register_signs(_get_abs_path('yamls/signs.yaml'))
 router.register_aggregate(_get_abs_path('yamls/aggregatefunc.yaml'))
@@ -40,13 +38,4 @@ def answer(question):
     if question:
         return aldnoah.answer(question)
     else:
-        return answer_test()
-
-
-def answer_test():
-    with open(_get_abs_path('yamls/questions.yaml'), 'r') as f:
-        d = yaml.load(f.read())
-    rs = []
-    for q in d:
-        rs.append(aldnoah.answer(q))
-    return rs
+        return
