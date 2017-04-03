@@ -30,9 +30,11 @@ class DjangoAnswerEngine(AnswerEngine):
         return {
             'question': qobj.question,
             'segment': str(qobj.segment),
+            'cells': [DomainCellSerializer(cell).data for cell in qobj.domaincells],
             'type': qobj.type,
             'answer': answer,
             'query': {
+                'middle': qobj.query.middle,
                 'target': [DomainCellSerializer(cell).data for cell in qobj.query.target],
                 'condition': [DomainCellSerializer(cell).data for cell in qobj.query.condition],
             },

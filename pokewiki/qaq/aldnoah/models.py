@@ -32,7 +32,7 @@ class Query(object):
 
     """Docstring for Query. """
 
-    def __init__(self, model=None, target=None, condition=None):
+    def __init__(self, model=None, middle=None, target=None, condition=None):
         # 对应 from
         # eg: 'Pokemon'
         self.model = model
@@ -42,6 +42,7 @@ class Query(object):
         # 对应 where
         # eg: ['qaq://Pokemon:name=皮卡丘', 'qaq://Pokemon:name/moves:name/power=80']
         self.condition = condition
+        self.middle = middle
 
 
 class Answer(object):
