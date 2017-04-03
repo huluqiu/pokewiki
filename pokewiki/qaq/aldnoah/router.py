@@ -35,8 +35,8 @@ class Flag(Enum):
     Relation = 'wr'
     Sign = 'ws'
     Paired = 'wp'
+    Specific = 'wsp'
     Any = '*'
-    De = '的'
 
 
 class Sign(Enum):

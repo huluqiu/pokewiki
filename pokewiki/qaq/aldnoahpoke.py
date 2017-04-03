@@ -23,6 +23,8 @@ with open(_get_abs_path('yamls/pattern.yaml'), 'r') as f:
     d = yaml.load(f.read())
     for pattern in d['pair']:
         infoextract_strategy.add_pairpattern(pattern)
+    for pattern in d['attribute_extend']:
+        infoextract_strategy.add_attribute_extend_pattern(pattern)
 
 django_retrieve = retrieve.DjangoRetrieve()
 

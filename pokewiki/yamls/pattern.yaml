@@ -13,3 +13,13 @@ pair:
   - [wv, wa]
   - [ws, wav]
   - [wav]
+
+attribute_extend:
+  - [we, '的', wg]
+  - [we, wg]
+  - [wg, wq, we]
+  - [wg, we]
+  - [wa, '的', wg]
+  - [wa, wg]
+  - [wg, wq, wa]
+  - [wg, wa]

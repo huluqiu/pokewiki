@@ -25,30 +25,41 @@ class InfoExtractStrategy(Strategy):
     def __init__(self, priority):
         Strategy.__init__(self, priority)
         self._pairpattern = {}
+        self._attribute_extend_pattern = {}
+
+    def _add_pattern(self, patterndic, pattern):
+        l = len(pattern)
+        patterns = patterndic.get(l, None)
+        if not patterns:
+            patterns = []
+            patterndic[l] = patterns
+        patterns.append(pattern)
+
+    def _elementtoflag(self, element):
+        try:
+            return Flag(element)
+        except ValueError:
+            return element
 
     def add_pairpattern(self, pattern):
-        def add(pattern):
-            l = len(pattern)
-            patterns = self._pairpattern.get(l, None)
-            if not patterns:
-                patterns = []
-                self._pairpattern[l] = patterns
-            patterns.append(pattern)
-        # check valid
-        pattern = [Flag(e) for e in pattern]
+        pattern = [self._elementtoflag(e) for e in pattern]
         # sign
         try:
             signindex = pattern.index(Flag.Sign)
         except ValueError:
-            add(pattern)
+            self._add_pattern(self._pairpattern, pattern)
         else:
             pattern_2sign = [e for e in pattern]
             pattern_2sign.insert(signindex, Flag.Sign)
             pattern_3sign = [e for e in pattern_2sign]
             pattern_3sign.insert(signindex, Flag.Sign)
-            add(pattern)
-            add(pattern_2sign)
-            add(pattern_3sign)
+            self._add_pattern(self._pairpattern, pattern)
+            self._add_pattern(self._pairpattern, pattern_2sign)
+            self._add_pattern(self._pairpattern, pattern_3sign)
+
+    def add_attribute_extend_pattern(self, pattern):
+        pattern = [self._elementtoflag(e) for e in pattern]
+        self._add_pattern(self._attribute_extend_pattern, pattern)
 
     def _filteruri(self, segment):
         """筛选 uri 和 flag"""
@@ -94,19 +105,29 @@ class InfoExtractStrategy(Strategy):
                     flag=uri_flags[max_index]['flag']
                 )
             )
-        return domaincells
+        domaincells = iter(domaincells)
 
-    def _pairing(self, domaincells, segment):
-        """属性值配对"""
-        # segment 中 domainword 的位置到 domaincells 的映射
-        seg2domain = list(filter(lambda n:
-                                 router.is_domainword(segment[n][1]),
-                                 range(len(segment))))
+        # 将 cells 替换到 segment 中
+        def changetoblock(e):
+            word, flag = e
+            if router.is_domainword(flag):
+                return next(domaincells)
+            else:
+                return e
+
+        return list(map(changetoblock, segment))
+
+    def _attribute_extend(self, blocks):
+        """属性值扩展. """
+        return blocks
+
+    def _pairing(self, blocks):
+        """属性值配对. """
         signs = None
 
         def pair_attribute(word, flag, index, **kwargs):
             if flag == Flag.Attribute.value:
-                return {'attribute': domaincells[seg2domain.index(index)]}
+                return {'attribute': blocks[index]}
 
         def pair_sign(word, **kwargs):
             global signs
@@ -122,15 +143,15 @@ class InfoExtractStrategy(Strategy):
         def pair_value(word, flag, index, **kwargs):
             if router.is_value(word, flag):
                 if flag == Flag.AttrValue.value:
-                    return {'value': domaincells[seg2domain.index(index)]}
+                    return {'value': blocks[index]}
                 return {'value': word}
 
         def pair_av(flag, index, **kwargs):
             if flag == Flag.AttrValue.value:
-                return {'value': domaincells[seg2domain.index(index)]}
+                return {'value': blocks[index]}
 
-        def pair_else(element, word, **kwargs):
-            if element == word or element.value == word:
+        def pair_else(element, word, flag, **kwargs):
+            if element == word or element == flag:
                 return {}
 
         # 表驱动
@@ -142,9 +163,9 @@ class InfoExtractStrategy(Strategy):
             'else': pair_else,
         }
         # 为每个 word 打上 match 标记
-        match_flags = [False for _ in segment]
+        match_flags = [False for _ in blocks]
 
-        def patternmatch(segment, start, pattern):
+        def patternmatch(blocks, start, pattern):
             global signs
             signs = None
             pairs = {}
@@ -152,10 +173,13 @@ class InfoExtractStrategy(Strategy):
             for index, element in enumerate(pattern):
                 if match_flags[start + index]:
                     return False
-                word, flag = segment[start + index]
+                block = blocks[start + index]
+                if isinstance(block, DomainCell):
+                    word = block.word
+                    flag = block.flag
+                else:
+                    word, flag = block
                 logger.debug('element: %s, word: %s, flag: %s', element, word, flag)
-                if flag == router.DOMAIN_WORD_FLAG:
-                    flag = domaincells[seg2domain.index(start + index)].flag
                 pairfunc = pairfunc_dict.get(element, pair_else)
                 logger.debug('func: %s', pairfunc)
                 pair = pairfunc(
@@ -192,12 +216,13 @@ class InfoExtractStrategy(Strategy):
             return False
         keys = list(self._pairpattern.keys())
         keys.sort(reverse=True)
+        domaincells = list(filter(lambda n: isinstance(n, DomainCell), blocks))
         for key in keys:
             for pattern in self._pairpattern[key]:
                 index = 0
                 len_pattern = len(pattern)
-                while(index + len_pattern <= len(segment)):
-                    match = patternmatch(segment, index, pattern)
+                while(index + len_pattern <= len(blocks)):
+                    match = patternmatch(blocks, index, pattern)
                     index += len_pattern if match else 1
                 # 检查是否全配对
                 cellsnotmatch = list(filter(lambda cell:
@@ -225,7 +250,7 @@ class InfoExtractStrategy(Strategy):
         condition = list(filter(lambda cell:
                                 cell.flag == Flag.AttrValue.value or
                                 cell.flag == Flag.Paired.value or
-                                cell.flag == Flag.EntityIndex.value
+                                cell.flag == Flag.EntityIndex.value,
                                 domaincells))
         return Query(model, None, target, condition)
 
@@ -237,7 +262,8 @@ class InfoExtractStrategy(Strategy):
             return QuestionType.Specific.value
 
     def analyze(self, qobj: Question):
-        domaincells = self._filteruri(qobj.segment)
-        qobj.domaincells = self._pairing(domaincells, qobj.segment)
+        blocks = self._filteruri(qobj.segment)
+        blocks = self._attribute_extend(blocks)
+        qobj.domaincells = self._pairing(blocks)
         qobj.query = self._querygenerate(qobj.domaincells)
         qobj.type = self._questiontype(qobj.query)
