@@ -1,5 +1,5 @@
 from .models import Question, Query, QuestionType, DomainCell
-from .router import Flag, Sign, AggregateFunc
+from .router import Flag, Sign
 from . import router
 import logging
 
@@ -129,11 +129,6 @@ class InfoExtractStrategy(Strategy):
             if flag == Flag.AttrValue.value:
                 return {'value': domaincells[seg2domain.index(index)]}
 
-        def pair_aggregatefunc(word, **kwargs):
-            if router.is_aggregatefunc(word):
-                func = router.get_aggregatefunc(word)
-                return {'aggregatefunc': func.value}
-
         def pair_else(element, word, **kwargs):
             if element == word or element.value == word:
                 return {}
@@ -144,7 +139,6 @@ class InfoExtractStrategy(Strategy):
             Flag.Sign: pair_sign,
             Flag.Value: pair_value,
             Flag.AttrValue: pair_av,
-            Flag.AggregateFunc: pair_aggregatefunc,
             'else': pair_else,
         }
         # 为每个 word 打上 match 标记
@@ -181,7 +175,6 @@ class InfoExtractStrategy(Strategy):
             attribute = pairs.get('attribute', None)
             sign = pairs.get('sign', Sign.Equal.value)
             value = pairs.get('value', None)
-            aggregatefunc = pairs.get('aggregatefunc', None)
             if attribute and value:
                 if isinstance(value, DomainCell):
                     uri = '%s%s%s' % (attribute.uri, sign, value.word)
@@ -190,10 +183,6 @@ class InfoExtractStrategy(Strategy):
                     uri = '%s%s%s' % (attribute.uri, sign, value)
                 attribute.uri = uri
                 attribute.flag = Flag.Paired.value
-                return True
-            elif attribute and aggregatefunc:
-                attribute.uri = '%s%s%s' % (attribute.uri, sign, aggregatefunc)
-                attribute.flag = Flag.AggregateFunc.value
                 return True
             elif value:
                 if sign:
@@ -236,10 +225,9 @@ class InfoExtractStrategy(Strategy):
         condition = list(filter(lambda cell:
                                 cell.flag == Flag.AttrValue.value or
                                 cell.flag == Flag.Paired.value or
-                                cell.flag == Flag.EntityIndex.value or
-                                cell.flag == Flag.AggregateFunc.value,
+                                cell.flag == Flag.EntityIndex.value
                                 domaincells))
-        return Query(model, target, condition)
+        return Query(model, None, target, condition)
 
     def _questiontype(self, query: Query):
         q = len(query.condition) == 1 and query.condition[0].flag == 'wi'

@@ -11,10 +11,5 @@ pair:
   - [wv, '的', wa]
   - [wa, wv]
   - [wv, wa]
-  - [wav]
-  # aggregate
   - [ws, wav]
-  - [wa, '的', wg]
-  - [wa, ws, wg]
-  - [wa, wg]
-  - [wg, wa]
+  - [wav]

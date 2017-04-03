@@ -35,7 +35,6 @@ class Flag(Enum):
     Relation = 'wr'
     Sign = 'ws'
     Paired = 'wp'
-    AggregateFunc = 'wg'
     Any = '*'
     De = '的'
 
