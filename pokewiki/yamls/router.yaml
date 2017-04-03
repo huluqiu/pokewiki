@@ -85,7 +85,7 @@ pokemon:
     category: ['种类']
     egg_step: ['孵化周期', '孵蛋步数', '孵']
     egg_groups: *egggroup
-    func_gender: ['性别', '性别比例']
+    gender.rate: ['性别', '性别比例']
     catch: ['捕获度', '捕获率']
     happiness: ['亲密度', '初始亲密度']
     expto100: ['经验']
@@ -96,10 +96,10 @@ pokemon:
         types: *type
         height: ['身高']
         weight: ['体重']
-        func_stats:
+        stats.species:
           cn: ['种族值']
           <<: *stats
-        func_stats_get:
+        stats_get.base:
           cn: ['努力值']
           <<: *stats
         abilities: *ability
