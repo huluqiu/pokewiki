@@ -13,16 +13,12 @@ class AldnoahTestCase(TestCase):
 
     def _test_answer(self, question, except_type, except_uris, except_query):
         answer = aldnoahpoke.answer(question)
-        qtype = answer['type']
         uris = self._formatter(answer['cells'])
         middle = answer['query']['middle']
         target = self._formatter(answer['query']['target'])
         condition = self._formatter(answer['query']['condition'])
-        # self.assertEqual(qtype, except_type)
-        for index in range(min(len(uris), len(except_uris))):
-            uri = uris[index]
-            except_uri = except_uris[index]
-            self.assertTupleEqual(uri, except_uri)
+        qtype = answer['type']
+        self.assertListEqual(uris, except_uris)
         # self.assertTrue(self._compare(uris, except_uris))
         # self.assertTrue(self._compare(middle, except_query['middle']))
         # self.assertTrue(self._compare(target, except_query['target']))
@@ -241,7 +237,7 @@ class AldnoahTestCase(TestCase):
         except_type = 'specific'
         except_uris = [
             ('qaq://Pokemon:name/moves:name', 'wr'),
-            ('qaq://Pokemon:name/moves:name=十万伏特', 'wi'),
+            ('qaq://Pokemon:name/moves:name=十万伏特', 'wp'),
         ]
         except_query = {
             'middle': [],

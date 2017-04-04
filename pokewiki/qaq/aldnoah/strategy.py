@@ -4,7 +4,6 @@ from . import router
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class Strategy(object):

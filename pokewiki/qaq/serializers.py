@@ -15,11 +15,11 @@ class PokemonSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class EggGroupSerializer(serializers.HyperlinkedModelSerializer):
-    pokemon_set = serializers.HyperlinkedRelatedField(many=True, view_name='pokemon-detail', read_only=True)
+    pokemons = serializers.HyperlinkedRelatedField(many=True, view_name='pokemon-detail', read_only=True)
 
     class Meta:
         model = EggGroup
-        fields = ('name', 'description', 'pokemon_set')
+        fields = ('name', 'description', 'pokemons')
 
 
 class DomainCellSerializer(serializers.Serializer):
