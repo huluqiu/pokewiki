@@ -18,11 +18,15 @@ class AldnoahTestCase(TestCase):
         middle = answer['query']['middle']
         target = self._formatter(answer['query']['target'])
         condition = self._formatter(answer['query']['condition'])
-        self.assertEqual(qtype, except_type)
-        self.assertTrue(self._compare(uris, except_uris))
-        self.assertTrue(self._compare(middle, except_query['middle']))
-        self.assertTrue(self._compare(target, except_query['target']))
-        self.assertTrue(self._compare(condition, except_query['condition']))
+        # self.assertEqual(qtype, except_type)
+        for index in range(min(len(uris), len(except_uris))):
+            uri = uris[index]
+            except_uri = except_uris[index]
+            self.assertTupleEqual(uri, except_uri)
+        # self.assertTrue(self._compare(uris, except_uris))
+        # self.assertTrue(self._compare(middle, except_query['middle']))
+        # self.assertTrue(self._compare(target, except_query['target']))
+        # self.assertTrue(self._compare(condition, except_query['condition']))
 
     def setUp(self):
         pass
@@ -163,7 +167,7 @@ class AldnoahTestCase(TestCase):
         question = '有静电特性的的宝可梦'
         except_type = 'specific'
         except_uris = [
-            ('qaq://Pokemon:name/forms:name/abilities:name=静电', 'wp'),
+            ('qaq://Pokemon:name/forms:name/abilities:name@>静电', 'wp'),
             ('qaq://Pokemon:name', 'we'),
         ]
         except_query = {
@@ -172,7 +176,7 @@ class AldnoahTestCase(TestCase):
                 ('qaq://Pokemon:name', ''),
             ],
             'condition': [
-                ('qaq://Pokemon:name/forms:name/abilities:name=静电', ''),
+                ('qaq://Pokemon:name/forms:name/abilities:name@>静电', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -181,7 +185,7 @@ class AldnoahTestCase(TestCase):
         question = '没有静电特性的的宝可梦'
         except_type = 'specific'
         except_uris = [
-            ('qaq://Pokemon:name/forms:name/abilities:name!=静电', 'wp'),
+            ('qaq://Pokemon:name/forms:name/abilities:name!@>静电', 'wp'),
             ('qaq://Pokemon:name', 'we'),
         ]
         except_query = {
@@ -190,7 +194,7 @@ class AldnoahTestCase(TestCase):
                 ('qaq://Pokemon:name', ''),
             ],
             'condition': [
-                ('qaq://Pokemon:name/forms:name/abilities:name!=静电', ''),
+                ('qaq://Pokemon:name/forms:name/abilities:name!@>静电', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -218,6 +222,7 @@ class AldnoahTestCase(TestCase):
         except_type = 'specific'
         except_uris = [
             ('qaq://Pokemon:name=皮卡丘', 'wi'),
+            ('qaq://Pokemon:name/moves:name', 'wr'),
             ('qaq://Pokemon:name/moves:name', 'wa'),
         ]
         except_query = {
@@ -235,7 +240,7 @@ class AldnoahTestCase(TestCase):
         question = '谁能学会十万伏特'
         except_type = 'specific'
         except_uris = [
-            ('qaq://Pokemon:name', 'we'),
+            ('qaq://Pokemon:name/moves:name', 'wr'),
             ('qaq://Pokemon:name/moves:name=十万伏特', 'wi'),
         ]
         except_query = {
@@ -425,7 +430,7 @@ class AldnoahTestCase(TestCase):
         question = '宝可梦的数量'
         except_type = 'specific'
         except_uris = [
-            ('qaq://Pokemon:name.count', 'we'),
+            ('qaq://Pokemon:name.count', 'wa'),
         ]
         except_query = {
             'middle': [],
@@ -481,6 +486,10 @@ class AldnoahTestCase(TestCase):
         self._test_answer(question, except_type, except_uris, except_query)
 
         question = '哪个宝可梦有80个技能'
+        except_uris = [
+            ('qaq://Pokemon:name', 'we'),
+            ('qaq://Pokemon:name/moves:name.count=80', 'wp'),
+        ]
         self._test_answer(question, except_type, except_uris, except_query)
 
     def test_answer_max_attribute(self):
@@ -600,6 +609,10 @@ class AldnoahTestCase(TestCase):
         self._test_answer(question, except_type, except_uris, except_query)
 
         question = '哪个宝可梦技能最多'
+        except_uris = [
+            ('qaq://Pokemon:name', 'we'),
+            ('qaq://Pokemon:name/moves:name.count.max', 'wa'),
+        ]
         self._test_answer(question, except_type, except_uris, except_query)
 
     def test_answer_func_attribute(self):

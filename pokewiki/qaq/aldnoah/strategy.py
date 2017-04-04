@@ -4,6 +4,7 @@ from . import router
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class Strategy(object):
@@ -119,6 +120,83 @@ class InfoExtractStrategy(Strategy):
 
     def _attribute_extend(self, blocks):
         """属性值扩展. """
+
+        def ae_entity(block, **kwargs):
+            if isinstance(block, DomainCell):
+                if block.flag == Flag.Entity.value:
+                    return True
+
+        def ae_attribute(block, **kwargs):
+            if isinstance(block, DomainCell):
+                if block.flag == Flag.Attribute.value:
+                    return True
+
+        def ae_attribute_extend(block, **kwargs):
+            if not isinstance(block, DomainCell):
+                word, _ = block
+                return router.is_attribute_extend(word)
+
+        def ae_quantifier(block, **kwargs):
+            if not isinstance(block, DomainCell):
+                word, _ = block
+                return router.is_quantifier(word)
+
+        def ae_else(block, element, **kwargs):
+            if not isinstance(block, DomainCell):
+                word, flag = block
+                return word == element or flag == element
+
+        aefunc_map = {
+            Flag.Entity: ae_entity,
+            Flag.Attribute: ae_attribute,
+            Flag.AttributeExtend: ae_attribute_extend,
+            Flag.Quantifier: ae_quantifier,
+            'else': ae_else,
+        }
+
+        def patternmatch(blocks, start, pattern):
+            cell = None
+            aeflag = None
+            logger.debug('ae_pattern: %s', pattern)
+            for index, element in enumerate(pattern):
+                block = blocks[start + index]
+                if isinstance(block, DomainCell):
+                    cell = block
+                    logger.debug('ae_cell: %s %s %s', cell.word, cell.uri, cell.flag)
+                else:
+                    word, flag = block
+                    logger.debug('ae_ae: %s', word)
+                    if router.is_attribute_extend(word):
+                        aeflag = router.get_attribute_extend(word)
+                aefunc = aefunc_map.get(element, ae_else)
+                match = aefunc(
+                    block=block,
+                    element=element,
+                )
+                if not match:
+                    logger.debug('not match')
+                    return
+            # 匹配成功
+            logger.debug('match!!!!!!!!!!!!')
+            cell.uri = router.uri_extend_attribute(cell.uri, aeflag)
+            cell.uri = router.deduction(cell.uri)
+            cell.flag = Flag.Attribute.value
+            logger.debug('ae_pattern_match: %s, %s', cell.uri, cell.flag)
+            return cell
+
+        keys = list(self._attribute_extend_pattern.keys())
+        keys.sort(reverse=True)
+        for key in keys:
+            for pattern in self._attribute_extend_pattern[key]:
+                index = 0
+                while(index + len(pattern) <= len(blocks)):
+                    cell = patternmatch(blocks, index, pattern)
+                    if cell:
+                        del blocks[index: index + len(pattern)]
+                        blocks.insert(index, cell)
+                        index += 0
+                    else:
+                        index += 1
         return blocks
 
     def _pairing(self, blocks):
@@ -150,6 +228,10 @@ class InfoExtractStrategy(Strategy):
             if flag == Flag.AttrValue.value:
                 return {'value': blocks[index]}
 
+        def pair_quantifier(word, **kwargs):
+            if router.is_quantifier(word):
+                return {'sign': '.count='}
+
         def pair_else(element, word, flag, **kwargs):
             if element == word or element == flag:
                 return {}
@@ -160,6 +242,7 @@ class InfoExtractStrategy(Strategy):
             Flag.Sign: pair_sign,
             Flag.Value: pair_value,
             Flag.AttrValue: pair_av,
+            Flag.Quantifier: pair_quantifier,
             'else': pair_else,
         }
         # 为每个 word 打上 match 标记
@@ -192,8 +275,9 @@ class InfoExtractStrategy(Strategy):
                     logger.debug('not match, return!')
                     return False
                 pairs.update(pair)
-                logger.debug('match, pairs: %s', pairs)
             # 没返回, 说明配对成功
+            logger.debug('match!!!!!!!!!!!!!')
+            logger.debug('pairs: %s', pairs)
             for i in range(start, start + len(pattern)):
                 match_flags[i] = True
             attribute = pairs.get('attribute', None)
@@ -206,6 +290,7 @@ class InfoExtractStrategy(Strategy):
                 else:
                     uri = '%s%s%s' % (attribute.uri, sign, value)
                 attribute.uri = uri
+                logger.debug('uri: %s', attribute.uri)
                 attribute.flag = Flag.Paired.value
                 return True
             elif value:

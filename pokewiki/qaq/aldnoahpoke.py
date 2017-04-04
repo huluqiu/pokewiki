@@ -12,7 +12,8 @@ def _get_abs_path(path):
 
 POKE_DICT_NAME = 'pokedict'
 router.register_signs(_get_abs_path('yamls/signs.yaml'))
-router.register_aggregate(_get_abs_path('yamls/aggregatefunc.yaml'))
+router.register_attribute_extend(_get_abs_path('yamls/aggregatefunc.yaml'))
+router.register_quantifier(_get_abs_path('yamls/quantifier.yaml'))
 router.register_valuefilter(_get_abs_path('yamls/valuefilter.yaml'))
 # router.generate_dic(_get_abs_path(POKE_DICT_NAME))
 

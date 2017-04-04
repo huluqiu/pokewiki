@@ -21,9 +21,11 @@ _re_wa = re.compile(r'(\w+:?\w+)(\W*)(\w*)')
 
 _sign_map = {}
 
-_aggregatefunc_map = {}
+_attribute_extend_map = {}
 
 _value_filter = set()
+
+_quantifier = set()
 
 
 class Flag(Enum):
@@ -35,7 +37,8 @@ class Flag(Enum):
     Relation = 'wr'
     Sign = 'ws'
     Paired = 'wp'
-    Specific = 'wsp'
+    AttributeExtend = 'wae'
+    Quantifier = 'wq'
     Any = '*'
 
 
@@ -57,7 +60,7 @@ class Sign(Enum):
     NotIn = '!<@'
 
 
-class AggregateFunc(Enum):
+class AttributeExtend(Enum):
     Avg = 'avg'
     Count = 'count'
     Max = 'max'
@@ -133,6 +136,10 @@ def getattribute(uri):
     return attribute
 
 
+def removeschema(uri):
+    return uri.split('://')[1]
+
+
 def getschema(uri):
     return uri.split('://')[0]
 
@@ -143,6 +150,22 @@ def setschema(uri, schema):
     separate = '://'
     path = uri.split(separate)[-1]
     return '%s://%s' % (schema, path)
+
+
+def uri_dirname(uri):
+    d = removeschema(uri).split('/')
+    if len(d) == 1:
+        return ''
+    else:
+        return d[0]
+
+
+def uri_basename(uri):
+    return removeschema(uri).split('/')[-1]
+
+
+def uri_replacebasename(uri, r):
+    return uri.replace(uri_basename(uri), r)
 
 
 def appenduri(uri, path=None, sign=None, value=None):
@@ -157,6 +180,14 @@ def appenduri(uri, path=None, sign=None, value=None):
             uri = '%s%s' % (uri, Sign.Equal.value)
         uri = '%s%s' % (uri, value)
     return uri
+
+
+def uri_extend_attribute(uri, aeflag):
+    return '%s.%s' % (uri, aeflag.value)
+
+
+def uri_get_attribute_extend(uri):
+    return uri.split('.')[1:]
 
 
 def _getflag(url, t: Flag):
@@ -315,24 +346,35 @@ def combinesigns(*signs):
     return sign
 
 
-def register_aggregate(path):
+def register_attribute_extend(path):
     """注册 aggregate functions.
 
     :param path: yaml 地址
     """
     with open(path, 'r') as f:
         d = yaml.load(f.read())
-        _aggregatefunc_map.update(_flattendict(d))
+        _attribute_extend_map.update(_flattendict(d))
 
 
-def is_aggregatefunc(word):
-    return word in _aggregatefunc_map
+def is_attribute_extend(word):
+    return word in _attribute_extend_map
 
 
-def get_aggregatefunc(word):
-    func = _aggregatefunc_map.get(word, None)
+def get_attribute_extend(word):
+    func = _attribute_extend_map.get(word, None)
     if func:
-        return AggregateFunc(func)
+        return AttributeExtend(func)
+
+
+def register_quantifier(path):
+    with open(path, 'r') as f:
+        d = yaml.load(f.read())
+        for v in d['root']:
+            _quantifier.add(v)
+
+
+def is_quantifier(word):
+    return word in _quantifier
 
 
 def register_valuefilter(path):
@@ -356,5 +398,18 @@ def is_value(word, flag):
         Flag.Attribute.value,
     ]
     r = r and not is_sign(word)
-    r = r and not is_aggregatefunc(word)
+    r = r and not is_attribute_extend(word)
+    r = r and not is_quantifier(word)
     return r
+
+
+def deduction(uri):
+    d = {
+        'moves:name.max': 'moves:name.count.max'
+    }
+    basename = uri_basename(uri)
+    rs = d.get(basename, None)
+    if rs:
+        return uri_replacebasename(uri, rs)
+    else:
+        return uri

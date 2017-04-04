@@ -2,24 +2,25 @@
 # ws: sign    eg: 是, 为, =, >, < ...
 # wv: value
 # wav: 能标记属性字段的 value
-# wg: aggregatefunc    eg: max, min...
+# wae: attribute extend    eg: max, min...
 # *: any
 
 pair:
   - [wa, ws, wv]
   - [ws, wv, wa]
   - [wv, '的', wa]
+  - [wv, wq, wa]
   - [wa, wv]
   - [wv, wa]
   - [ws, wav]
   - [wav]
 
 attribute_extend:
-  - [we, '的', wg]
-  - [we, wg]
-  - [wg, wq, we]
-  - [wg, we]
-  - [wa, '的', wg]
-  - [wa, wg]
-  - [wg, wq, wa]
-  - [wg, wa]
+  - [we, '的', wae]
+  - [we, wae]
+  - [wae, wq, we]
+  - [wae, we]
+  - [wa, '的', wae]
+  - [wa, wae]
+  - [wae, wq, wa]
+  - [wae, wa]
