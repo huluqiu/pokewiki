@@ -327,14 +327,6 @@ class InfoExtractStrategy(Strategy):
         def is_maxormin(extension):
             return extension in [AttributeExtend.Max.value, AttributeExtend.Min.value]
 
-        def solve_maxormin(uri, extension, target, condition):
-            dirname = urimanager.dirname(uri)
-            if (dirname, '') in target:
-                condition.append((uri, extension))
-                target.append((uri, ''))
-            else:
-                target.append((uri, extension))
-
         def solve_last(uri, extension, target, condition):
             dirname = urimanager.dirname(uri)
             dirname = (dirname, '')
@@ -412,6 +404,19 @@ class InfoExtractStrategy(Strategy):
                 middle_name = '%s_%s' % (extension, middle_name)
             uri = '%s%s%s' % (uri, sign, value)
             condition.append((uri, ''))
+        # 处理 Relation
+        uris = flag_dict.get(Flag.Relation.value, [])
+        condition_paths = [urimanager.path(uri) for uri, _ in condition]
+        for uri in uris:
+            dirname = urimanager.dirname(uri)
+            if uri not in condition_paths:
+                if (uri, '') not in target:
+                    target.append((uri, ''))
+            elif dirname not in condition_paths:
+                if (dirname, '') not in target:
+                    target.append((dirname, ''))
+            else:
+                continue
         return Query(model, middle, target, condition)
 
     def _questiontype(self, query: Query):
