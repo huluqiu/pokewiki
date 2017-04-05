@@ -69,6 +69,23 @@ class UrimanagerTestCase(unittest.TestCase):
         s = urimanager.basename(uri)
         self.assertEqual(s, 'Pokemon:name')
 
+    def test_setbasename(self):
+        uri = 'qaq://Pokemon:name'
+        s = urimanager.setbasename(uri, 'basename')
+        self.assertEqual(s, 'qaq://basename')
+
+        uri = 'qaq://Pokemon:name=皮卡丘'
+        s = urimanager.setbasename(uri, 'basename')
+        self.assertEqual(s, 'qaq://basename=皮卡丘')
+
+        uri = 'qaq://Pokemon:name/moves:name.count'
+        s = urimanager.setbasename(uri, 'basename')
+        self.assertEqual(s, 'qaq://Pokemon:name/basename')
+
+        uri = 'qaq://Pokemon:name/moves:name.count=20'
+        s = urimanager.setbasename(uri, 'basename')
+        self.assertEqual(s, 'qaq://Pokemon:name/basename=20')
+
     def test_sign(self):
         uri = 'qaq://Pokemon:name=皮卡丘'
         s = urimanager.sign(uri)

@@ -60,6 +60,18 @@ def basename(uri):
     return path(uri).split(_path_flag)[-1]
 
 
+def setbasename(uri, name):
+    s = schema(uri)
+    path, sign, value = separate(uri)
+    nodes = path.split(_path_flag)
+    if len(nodes) == 1:
+        return s + _schema_flag + name + sign + value
+    r = ''
+    for node in nodes[0:-1]:
+        r = r + node + _path_flag
+    return s + _schema_flag + r + name + sign + value
+
+
 def sign(uri):
     return separate(uri)[1]
 

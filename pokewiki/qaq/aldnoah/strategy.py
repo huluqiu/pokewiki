@@ -1,6 +1,7 @@
 from .models import Question, Query, QuestionType, DomainCell
 from .router import Flag, Sign
 from . import router
+from . import urimanager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ class InfoExtractStrategy(Strategy):
                 weights_j = weightss[i + 1 + j]
                 for m, uri_m in enumerate(uris_i[1]):
                     for n, uri_n in enumerate(uris_j[1]):
-                        if router.match(uri_m['uri'], uri_n['uri']):
+                        if urimanager.related(uri_m['uri'], uri_n['uri']):
                             weights_i[m] = weights_i[m] + 1
                             weights_j[n] = weights_j[n] + 1
         # 根据 uri 的权值筛选 uri
@@ -94,8 +95,8 @@ class InfoExtractStrategy(Strategy):
                     max_index = j
                     max_weight = weight
                 elif weight == max_weight:
-                    l1 = router.lenofuri(uri_flags[max_index]['uri'])
-                    l2 = router.lenofuri(uri_flags[j]['uri'])
+                    l1 = urimanager.urilen(uri_flags[max_index]['uri'])
+                    l2 = urimanager.urilen(uri_flags[j]['uri'])
                     if l2 < l1:
                         max_index = j
             domaincells.append(
@@ -177,7 +178,7 @@ class InfoExtractStrategy(Strategy):
                     return
             # 匹配成功
             logger.debug('match!!!!!!!!!!!!')
-            cell.uri = router.uri_extend_attribute(cell.uri, aeflag)
+            cell.uri = urimanager.set_attribute_extension(cell.uri, aeflag.value)
             cell.uri = router.deduction(cell.uri)
             cell.flag = Flag.Attribute.value
             logger.debug('ae_pattern_match: %s, %s', cell.uri, cell.flag)
@@ -323,7 +324,7 @@ class InfoExtractStrategy(Strategy):
 
     def _querygenerate(self, domaincells):
         """确定 model, target 和 condition"""
-        model = [router.getmodel(cell.uri) for cell in domaincells]
+        model = [urimanager.modelname(cell.uri) for cell in domaincells]
         model = model[0] if len(set(model)) == 1 else ''
         target = list(filter(lambda cell:
                              cell.flag == Flag.Attribute.value or
