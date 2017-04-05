@@ -31,17 +31,31 @@ def removeschema(uri):
     return uri
 
 
-def separate(uri, showindex=True):
+def root(uri):
+    s = schema(uri)
+    uri = removeschema(uri)
+    uri = uri.split(_path_flag)[0]
+    return setschema(uri, s)
+
+
+def separate(uri, showschema=True, showindex=True, lastindex=False, showextensions=True):
+    s = schema(uri)
     uri = removeschema(uri)
     nodes = uri.split(_path_flag)
     if len(nodes) == 1:
         path, sign, value = _re_wa.match(nodes[0]).groups()
-        if not showindex:
+        if not showextensions:
+            path = path.split(_extension_flag)[0]
+        if not showindex and not lastindex:
             path = path.replace(_index_flag, _path_flag)
+        if showschema:
+            path = setschema(path, s)
         return (path, sign, value)
     leaf = nodes[-1]
     leaf, sign, value = _re_wa.match(leaf).groups()
-    if not showindex:
+    if not showextensions:
+        leaf = leaf.split(_extension_flag)[0]
+    if not showindex and not lastindex:
         leaf = leaf.replace(_index_flag, _path_flag)
     path = ''
     for node in nodes[0:-1]:
@@ -49,20 +63,22 @@ def separate(uri, showindex=True):
             node = node.split(_index_flag)[0]
         path = '%s%s%s' % (path, node, _path_flag)
     path += leaf
+    if showschema:
+        path = setschema(path, s)
     return (path, sign, value)
 
 
-def path(uri):
-    return separate(uri)[0]
+def path(uri, **kwargs):
+    return separate(uri, **kwargs)[0]
 
 
-def basename(uri):
-    return path(uri).split(_path_flag)[-1]
+def basename(uri, showindex=False, lastindex=True, **kwargs):
+    return path(uri, showindex=showindex, lastindex=lastindex, **kwargs).split(_path_flag)[-1]
 
 
 def setbasename(uri, name):
     s = schema(uri)
-    path, sign, value = separate(uri)
+    path, sign, value = separate(uri, showschema=False)
     nodes = path.split(_path_flag)
     if len(nodes) == 1:
         return s + _schema_flag + name + sign + value
@@ -70,6 +86,19 @@ def setbasename(uri, name):
     for node in nodes[0:-1]:
         r = r + node + _path_flag
     return s + _schema_flag + r + name + sign + value
+
+
+def dirname(uri):
+    s = schema(uri)
+    p = path(uri, showschema=False)
+    nodes = p.split(_path_flag)
+    if len(nodes) == 1:
+        return ''
+    r = ''
+    for node in nodes[0:-1]:
+        r = r + node + _path_flag
+    r = r[0:-1]
+    return setschema(r, s)
 
 
 def sign(uri):
@@ -84,16 +113,6 @@ def related(uri1, uri2):
     uri1 = path(uri1).lower()
     uri2 = path(uri2).lower()
     return uri1 in uri2 or uri2 in uri1
-
-
-def dirname(uri, showindex=True):
-    uri = removeschema(uri)
-    nodes = uri.split(_path_flag)
-    if len(nodes) == 1:
-        return ''
-    if not showindex:
-        nodes = [node.split(_index_flag)[0] for node in nodes]
-    return nodes[0:-1]
 
 
 def urilen(uri):

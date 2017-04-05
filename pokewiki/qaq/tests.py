@@ -265,7 +265,7 @@ class AldnoahTestCase(TestCase):
             ],
             'condition': [
                 ('qaq://Move:name=十万伏特', ''),
-                ('qaq://Move:name=飞叶快刀', 'or'),
+                ('qaq://Move:name=飞叶快刀', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -496,15 +496,13 @@ class AldnoahTestCase(TestCase):
             ('qaq://Move:name', 'we'),
         ]
         except_query = {
-            'middle': [
-                ('qaq://Move:name/power', 'max'),
-            ],
+            'middle': [],
             'target': [
                 ('qaq://Move:name', ''),
                 ('qaq://Move:name/power', ''),
             ],
             'condition': [
-                ('qaq://Move:name/power=max_power', ''),
+                ('qaq://Move:name/power', 'max'),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -513,6 +511,14 @@ class AldnoahTestCase(TestCase):
         except_uris = [
             ('qaq://Move:name/power.max', 'wa'),
         ]
+        except_query = {
+            'middle': [],
+            'target': [
+                ('qaq://Move:name/power', 'max'),
+            ],
+            'condition': [
+            ]
+        }
         self._test_answer(question, except_type, except_uris, except_query)
 
     def test_answer_avg_attribute(self):
@@ -546,16 +552,14 @@ class AldnoahTestCase(TestCase):
             ('qaq://Pokemon:name/moves:name', 'wa'),
         ]
         except_query = {
-            'middle': [
-                ('qaq://Pokemon:name/moves:name/power', 'max'),
-            ],
+            'middle': [],
             'target': [
                 ('qaq://Pokemon:name/moves:name', ''),
                 ('qaq://Pokemon:name/moves:name/power', ''),
             ],
             'condition': [
                 ('qaq://Pokemon:name=皮卡丘', ''),
-                ('qaq://Pokemon:name/moves:name/power=max_power', '')
+                ('qaq://Pokemon:name/moves:name/power', 'max'),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -569,14 +573,13 @@ class AldnoahTestCase(TestCase):
             ('qaq://Move:name', 'we'),
         ]
         except_query = {
-            'middle': [
-                ('qaq://Move:name/power', 'max'),
-            ],
+            'middle': [],
             'target': [
                 ('qaq://Move:name', ''),
+                ('qaq://Move:name/power', ''),
             ],
             'condition': [
-                ('qaq://Move:name/power=max_power', ''),
+                ('qaq://Move:name/power', 'max'),
                 ('qaq://Move:name/type:name=水', ''),
             ]
         }
@@ -592,14 +595,13 @@ class AldnoahTestCase(TestCase):
         except_query = {
             'middle': [
                 ('qaq://Pokemon:name/moves:name', 'count'),
-                ('qaq://Pokemon:name/count_moves', 'max'),
             ],
             'target': [
                 ('qaq://Pokemon:name', ''),
-                ('qaq://Pokemon:name/count_moves', '')
+                ('qaq://Pokemon:name/count_moves', ''),
             ],
             'condition': [
-                ('qaq://Pokemon:name/count_moves=max_count_moves', '')
+                ('qaq://Pokemon:name/count_moves', 'max'),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -619,11 +621,9 @@ class AldnoahTestCase(TestCase):
             ('qaq://Pokemon:name/forms:name/stats.species', 'wa'),
         ]
         except_query = {
-            'middle': [
-                ('qaq://Pokemon:name/forms:name/stats', 'species'),
-            ],
+            'middle': [],
             'target': [
-                ('qaq://Pokemon:name/species_stats', ''),
+                ('qaq://Pokemon:name/forms:name/stats', 'species'),
             ],
             'condition': [
                 ('qaq://Pokemon:name=皮卡丘', ''),
@@ -644,7 +644,6 @@ class AldnoahTestCase(TestCase):
             ],
             'target': [
                 ('qaq://Pokemon:name', ''),
-                ('qaq://Pokemon:name/species_stats', ''),
             ],
             'condition': [
                 ('qaq://Pokemon:name/species_stats=500', ''),
@@ -678,15 +677,11 @@ class AldnoahTestCase(TestCase):
         except_query = {
             'middle': [
                 ('qaq://Pokemon:name/forms:name/stats', 'species'),
-                ('qaq://Pokemon:name/forms:name/species_stats', 'max'),
             ],
             'target': [
-                ('qaq://Pokemon:name/forms:name', ''),
-                ('qaq://Pokemon:name/species_stats', '')
+                ('qaq://Pokemon:name/species_stats', 'max'),
             ],
-            'condition': [
-                ('qaq://Pokemon:name/species_stats=max_species_stats', '')
-            ]
+            'condition': []
         }
         self._test_answer(question, except_type, except_uris, except_query)
 
@@ -699,11 +694,10 @@ class AldnoahTestCase(TestCase):
         ]
         except_query = {
             'middle': [],
-            'target': [
-                ('qaq://Pokemon:name=皮卡丘', ''),
-            ],
+            'target': [],
             'condition': [
-                ('qaq://Pokemon:name/forms:name/abilities:name@>静电', '')
+                ('qaq://Pokemon:name=皮卡丘', ''),
+                ('qaq://Pokemon:name/forms:name/abilities:name@>静电', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)

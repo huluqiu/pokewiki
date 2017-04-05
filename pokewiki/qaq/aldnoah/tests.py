@@ -25,49 +25,65 @@ class UrimanagerTestCase(unittest.TestCase):
     def test_separate(self):
         uri = 'qaq://Pokemon:name'
         s = urimanager.separate(uri)
-        self.assertTupleEqual(s, ('Pokemon:name', '', ''))
+        self.assertTupleEqual(s, ('qaq://Pokemon:name', '', ''))
 
         uri = 'qaq://Pokemon:name=皮卡丘'
         s = urimanager.separate(uri)
-        self.assertTupleEqual(s, ('Pokemon:name', '=', '皮卡丘'))
+        self.assertTupleEqual(s, ('qaq://Pokemon:name', '=', '皮卡丘'))
 
         uri = 'qaq://Pokemon:name/forms:name/types:name'
         s = urimanager.separate(uri)
-        self.assertTupleEqual(s, ('Pokemon:name/forms:name/types:name', '', ''))
+        self.assertTupleEqual(s, ('qaq://Pokemon:name/forms:name/types:name', '', ''))
 
         uri = 'qaq://Pokemon:name/forms:name/types:name=火'
         s = urimanager.separate(uri)
-        self.assertTupleEqual(s, ('Pokemon:name/forms:name/types:name', '=', '火'))
+        self.assertTupleEqual(s, ('qaq://Pokemon:name/forms:name/types:name', '=', '火'))
 
         uri = 'qaq://Pokemon:name'
-        s = urimanager.separate(uri, showindex=False)
+        s = urimanager.separate(uri, showschema=False, showindex=False)
         self.assertTupleEqual(s, ('Pokemon/name', '', ''))
 
         uri = 'qaq://Pokemon:name=皮卡丘'
-        s = urimanager.separate(uri, showindex=False)
+        s = urimanager.separate(uri, showschema=False, showindex=False)
         self.assertTupleEqual(s, ('Pokemon/name', '=', '皮卡丘'))
 
         uri = 'qaq://Pokemon:name/forms:name/types:name'
-        s = urimanager.separate(uri, showindex=False)
+        s = urimanager.separate(uri, showschema=False, showindex=False)
         self.assertTupleEqual(s, ('Pokemon/forms/types/name', '', ''))
 
         uri = 'qaq://Pokemon:name/forms:name/types:name=火'
-        s = urimanager.separate(uri, showindex=False)
+        s = urimanager.separate(uri, showschema=False, showindex=False)
         self.assertTupleEqual(s, ('Pokemon/forms/types/name', '=', '火'))
+
+        uri = 'qaq://Pokemon:name/forms:name/types:name.count'
+        s = urimanager.separate(uri, showschema=False, showindex=False, showextensions=False)
+        self.assertTupleEqual(s, ('Pokemon/forms/types/name', '', ''))
 
     def test_path(self):
         uri = 'qaq://Pokemon:name=皮卡丘'
         s = urimanager.path(uri)
-        self.assertEqual(s, 'Pokemon:name')
+        self.assertEqual(s, 'qaq://Pokemon:name')
 
         uri = 'qaq://Pokemon:name/forms:name/types:name=火'
         s = urimanager.path(uri)
-        self.assertEqual(s, 'Pokemon:name/forms:name/types:name')
+        self.assertEqual(s, 'qaq://Pokemon:name/forms:name/types:name')
+
+        uri = 'qaq://Pokemon:name/moves:name.count=80'
+        s = urimanager.path(uri, showindex=False, showextensions=False)
+        self.assertEqual(s, 'qaq://Pokemon/moves/name')
 
     def test_basename(self):
         uri = 'qaq://Pokemon:name=皮卡丘'
         s = urimanager.basename(uri)
         self.assertEqual(s, 'Pokemon:name')
+
+        uri = 'qaq://Pokemon:name/moves:name.count=80'
+        s = urimanager.basename(uri, showextensions=False)
+        self.assertEqual(s, 'moves:name')
+
+        uri = 'qaq://Pokemon:name/moves:name.count=80'
+        s = urimanager.basename(uri, lastindex=False, showextensions=False)
+        self.assertEqual(s, 'name')
 
     def test_setbasename(self):
         uri = 'qaq://Pokemon:name'
@@ -85,6 +101,15 @@ class UrimanagerTestCase(unittest.TestCase):
         uri = 'qaq://Pokemon:name/moves:name.count=20'
         s = urimanager.setbasename(uri, 'basename')
         self.assertEqual(s, 'qaq://Pokemon:name/basename=20')
+
+    def test_dirname(self):
+        uri = 'qaq://Pokemon:name'
+        s = urimanager.dirname(uri)
+        self.assertEqual(s, '')
+
+        uri = 'qaq://Pokemon:name/moves:name/power'
+        s = urimanager.dirname(uri)
+        self.assertEqual(s, 'qaq://Pokemon:name/moves:name')
 
     def test_sign(self):
         uri = 'qaq://Pokemon:name=皮卡丘'

@@ -326,6 +326,27 @@ class InfoExtractStrategy(Strategy):
         """确定 model, target 和 condition"""
         model = [urimanager.modelname(cell.uri) for cell in domaincells]
         model = model[0] if len(set(model)) == 1 else ''
+        target = []
+        condition = []
+        middle = []
+        for cell in domaincells:
+            if cell.flag in [Flag.Attribute.value, Flag.Entity]:
+                attribute_extensions = urimanager.attribute_extensions(cell.uri)
+                if attribute_extensions:
+                    path = urimanager.path(cell.uri, showextensions=False)
+                    basename = urimanager.basename(cell.uri, showextensions=False)
+                    if len(attribute_extensions) == 1:
+                        target.append((path, attribute_extensions[0]))
+                    else:
+                        middle.append((path, attribute_extensions[0]))
+                        root_uri = urimanager.root(cell.uri)
+                        basename = '%s_%s' % (attribute_extensions[0], basename)
+                        for extension in attribute_extensions[1:-1]:
+                            middle_uri = urimanager.append(root_uri, path=basename)
+                            middle.append((middle_uri, extension))
+                            basename = '%s_%s' % (extension, basename)
+                        uri = urimanager.append(root_uri, path=basename)
+                        target.append((uri, ''))
         target = list(filter(lambda cell:
                              cell.flag == Flag.Attribute.value or
                              cell.flag == Flag.Entity.value,
