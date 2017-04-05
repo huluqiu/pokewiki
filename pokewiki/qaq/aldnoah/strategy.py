@@ -323,9 +323,7 @@ class InfoExtractStrategy(Strategy):
 
     def _querygenerate(self, domaincells):
         """确定 model, target 和 condition"""
-        model = list(map(lambda cell:
-                         router.getmodel(cell.uri),
-                         domaincells))
+        model = [router.getmodel(cell.uri) for cell in domaincells]
         model = model[0] if len(set(model)) == 1 else ''
         target = list(filter(lambda cell:
                              cell.flag == Flag.Attribute.value or

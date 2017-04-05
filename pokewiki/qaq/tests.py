@@ -265,7 +265,7 @@ class AldnoahTestCase(TestCase):
             ],
             'condition': [
                 ('qaq://Move:name=十万伏特', ''),
-                ('qaq://Move:name=飞叶快刀', ''),
+                ('qaq://Move:name=飞叶快刀', 'or'),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
