@@ -39,6 +39,14 @@ class UrimanagerTestCase(unittest.TestCase):
         s = urimanager.separate(uri)
         self.assertTupleEqual(s, ('qaq://Pokemon:name/forms:name/types:name', '=', '火'))
 
+        uri = 'qaq://Pokemon:name/moves:name.count=90'
+        s = urimanager.separate(uri)
+        self.assertTupleEqual(s, ('qaq://Pokemon:name/moves:name.count', '=', '90'))
+
+        uri = 'qaq://Pokemon:name/moves:name.count=90'
+        s = urimanager.separate(uri, showextensions=False)
+        self.assertTupleEqual(s, ('qaq://Pokemon:name/moves:name', '=', '90'))
+
         uri = 'qaq://Pokemon:name'
         s = urimanager.separate(uri, showschema=False, showindex=False)
         self.assertTupleEqual(s, ('Pokemon/name', '', ''))
@@ -82,8 +90,8 @@ class UrimanagerTestCase(unittest.TestCase):
         self.assertEqual(s, 'moves:name')
 
         uri = 'qaq://Pokemon:name/moves:name.count=80'
-        s = urimanager.basename(uri, lastindex=False, showextensions=False)
-        self.assertEqual(s, 'name')
+        s = urimanager.basename(uri, showindex=False, showextensions=False)
+        self.assertEqual(s, 'moves')
 
     def test_setbasename(self):
         uri = 'qaq://Pokemon:name'
@@ -189,6 +197,10 @@ class UrimanagerTestCase(unittest.TestCase):
         uri = 'qaq://Pokemon:name/moves:name.count.max'
         s = urimanager.attribute_extensions(uri)
         self.assertListEqual(s, ['count', 'max'])
+
+        uri = 'qaq://Pokemon:name/moves:name.count=90'
+        s = urimanager.attribute_extensions(uri)
+        self.assertListEqual(s, ['count'])
 
     def test_set_attribute_extension(self):
         uri = 'qaq://Pokemon:name'

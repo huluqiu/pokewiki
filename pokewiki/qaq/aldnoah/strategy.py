@@ -1,5 +1,5 @@
 from .models import Question, Query, QuestionType, DomainCell
-from .router import Flag, Sign
+from .router import Flag, Sign, AttributeExtend
 from . import router
 from . import urimanager
 import logging
@@ -324,42 +324,98 @@ class InfoExtractStrategy(Strategy):
 
     def _querygenerate(self, domaincells):
         """确定 model, target 和 condition"""
+        def is_maxormin(extension):
+            return extension in [AttributeExtend.Max.value, AttributeExtend.Min.value]
+
+        def solve_maxormin(uri, extension, target, condition):
+            dirname = urimanager.dirname(uri)
+            if (dirname, '') in target:
+                condition.append((uri, extension))
+                target.append((uri, ''))
+            else:
+                target.append((uri, extension))
+
+        def solve_last(uri, extension, target, condition):
+            dirname = urimanager.dirname(uri)
+            dirname = (dirname, '')
+            if dirname in target:
+                if is_maxormin(extension):
+                    condition.append((uri, extension))
+                    target.append((uri, ''))
+                else:
+                    target.remove(dirname)
+                    target.append((uri, extension))
+            else:
+                target.append((uri, extension))
+
         model = [urimanager.modelname(cell.uri) for cell in domaincells]
         model = model[0] if len(set(model)) == 1 else ''
-        target = []
+        # 将 uri 根据 flag 归类
+        flag_dict = {}
+        for cell in domaincells:
+            uris = flag_dict.get(cell.flag, None)
+            if not uris:
+                uris = []
+                flag_dict[cell.flag] = uris
+            uris.append(cell.uri)
+        # 处理 Entity
+        target = [(uri, '') for uri in flag_dict.get(Flag.Entity.value, [])]
         condition = []
         middle = []
-        for cell in domaincells:
-            if cell.flag in [Flag.Attribute.value, Flag.Entity]:
-                attribute_extensions = urimanager.attribute_extensions(cell.uri)
-                if attribute_extensions:
-                    path = urimanager.path(cell.uri, showextensions=False)
-                    basename = urimanager.basename(cell.uri, showextensions=False)
-                    if len(attribute_extensions) == 1:
-                        target.append((path, attribute_extensions[0]))
+        # 处理 EntityIndex
+        uris = flag_dict.get(Flag.EntityIndex.value, [])
+        for uri in uris:
+            condition.append((uri, ''))
+        # 处理 Attribute
+        uris = flag_dict.get(Flag.Attribute.value, [])
+        target.extend([(uri, '') for uri in uris if not urimanager.attribute_extensions(uri)])
+        for uri in uris:
+            extensions = urimanager.attribute_extensions(uri)
+            if not extensions:
+                continue
+            uri = urimanager.path(uri, showextensions=False)
+            if len(extensions) == 1:
+                solve_last(uri, extensions[0], target, condition)
+            else:
+                extension = extensions[0]
+                middle.append((uri, extension))
+                basename = urimanager.basename(uri, showindex=False)
+                middle_name = '%s_%s' % (extension, basename)
+                rooturi = urimanager.root(uri)
+                for index, extension in enumerate(extensions[1:]):
+                    uri = urimanager.append(rooturi, path=middle_name)
+                    middle_name = '%s_%s' % (extension, middle_name)
+                    # 最后一个
+                    if (index + 2) == len(extensions):
+                        solve_last(uri, extension, target, condition)
                     else:
-                        middle.append((path, attribute_extensions[0]))
-                        root_uri = urimanager.root(cell.uri)
-                        basename = '%s_%s' % (attribute_extensions[0], basename)
-                        for extension in attribute_extensions[1:-1]:
-                            middle_uri = urimanager.append(root_uri, path=basename)
-                            middle.append((middle_uri, extension))
-                            basename = '%s_%s' % (extension, basename)
-                        uri = urimanager.append(root_uri, path=basename)
-                        target.append((uri, ''))
-        target = list(filter(lambda cell:
-                             cell.flag == Flag.Attribute.value or
-                             cell.flag == Flag.Entity.value,
-                             domaincells))
-        condition = list(filter(lambda cell:
-                                cell.flag == Flag.AttrValue.value or
-                                cell.flag == Flag.Paired.value or
-                                cell.flag == Flag.EntityIndex.value,
-                                domaincells))
-        return Query(model, None, target, condition)
+                        middle.append((uri, extension))
+        # 处理 Pair
+        uris = flag_dict.get(Flag.Paired.value, [])
+        for uri in uris:
+            extensions = urimanager.attribute_extensions(uri)
+            if not extensions:
+                condition.append((uri, ''))
+                continue
+            uri, sign, value = urimanager.separate(uri, showextensions=False)
+            extension = extensions[0]
+            middle.append((uri, extension))
+            basename = urimanager.basename(uri, showindex=False)
+            middle_name = '%s_%s' % (extension, basename)
+            rooturi = urimanager.root(uri)
+            uri = urimanager.append(rooturi, path=middle_name)
+            for index, extension in enumerate(extensions[1:]):
+                if (index + 2) == len(extensions):
+                    break
+                uri = urimanager.append(rooturi, path=middle_name)
+                middle.append((uri, extension))
+                middle_name = '%s_%s' % (extension, middle_name)
+            uri = '%s%s%s' % (uri, sign, value)
+            condition.append((uri, ''))
+        return Query(model, middle, target, condition)
 
     def _questiontype(self, query: Query):
-        q = len(query.condition) == 1 and query.condition[0].flag == 'wi'
+        q = len(query.condition) == 1 and query.condition[0][1] == 'wi'
         if not query.target and not q:
             return QuestionType.Bool.value
         else:

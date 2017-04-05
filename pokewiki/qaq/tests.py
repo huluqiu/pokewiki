@@ -15,14 +15,14 @@ class AldnoahTestCase(TestCase):
         answer = aldnoahpoke.answer(question)
         uris = self._formatter(answer['cells'])
         middle = answer['query']['middle']
-        target = self._formatter(answer['query']['target'])
-        condition = self._formatter(answer['query']['condition'])
+        target = answer['query']['target']
+        condition = answer['query']['condition']
         qtype = answer['type']
         self.assertListEqual(uris, except_uris)
-        # self.assertTrue(self._compare(uris, except_uris))
-        # self.assertTrue(self._compare(middle, except_query['middle']))
-        # self.assertTrue(self._compare(target, except_query['target']))
-        # self.assertTrue(self._compare(condition, except_query['condition']))
+        self.assertListEqual(middle, except_query['middle'])
+        self.assertListEqual(target, except_query['target'])
+        self.assertListEqual(condition, except_query['condition'])
+        self.assertEqual(qtype, answer['type'])
 
     def setUp(self):
         pass

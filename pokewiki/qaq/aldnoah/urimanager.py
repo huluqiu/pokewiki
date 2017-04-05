@@ -38,7 +38,7 @@ def root(uri):
     return setschema(uri, s)
 
 
-def separate(uri, showschema=True, showindex=True, lastindex=False, showextensions=True):
+def separate(uri, showschema=True, showindex=True, showextensions=True):
     s = schema(uri)
     uri = removeschema(uri)
     nodes = uri.split(_path_flag)
@@ -46,7 +46,7 @@ def separate(uri, showschema=True, showindex=True, lastindex=False, showextensio
         path, sign, value = _re_wa.match(nodes[0]).groups()
         if not showextensions:
             path = path.split(_extension_flag)[0]
-        if not showindex and not lastindex:
+        if not showindex:
             path = path.replace(_index_flag, _path_flag)
         if showschema:
             path = setschema(path, s)
@@ -55,7 +55,7 @@ def separate(uri, showschema=True, showindex=True, lastindex=False, showextensio
     leaf, sign, value = _re_wa.match(leaf).groups()
     if not showextensions:
         leaf = leaf.split(_extension_flag)[0]
-    if not showindex and not lastindex:
+    if not showindex:
         leaf = leaf.replace(_index_flag, _path_flag)
     path = ''
     for node in nodes[0:-1]:
@@ -72,8 +72,11 @@ def path(uri, **kwargs):
     return separate(uri, **kwargs)[0]
 
 
-def basename(uri, showindex=False, lastindex=True, **kwargs):
-    return path(uri, showindex=showindex, lastindex=lastindex, **kwargs).split(_path_flag)[-1]
+def basename(uri, showindex=True, **kwargs):
+    p = path(uri, **kwargs).split(_path_flag)[-1]
+    if not showindex:
+        return p.split(_index_flag)[0]
+    return p
 
 
 def setbasename(uri, name):

@@ -35,7 +35,7 @@ class DjangoAnswerEngine(AnswerEngine):
             'answer': answer,
             'query': {
                 'middle': qobj.query.middle,
-                'target': [DomainCellSerializer(cell).data for cell in qobj.query.target],
-                'condition': [DomainCellSerializer(cell).data for cell in qobj.query.condition],
+                'target': qobj.query.target,
+                'condition': qobj.query.condition,
             },
         }
