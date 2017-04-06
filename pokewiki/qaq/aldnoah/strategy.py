@@ -354,10 +354,6 @@ class InfoExtractStrategy(Strategy):
         target = [(uri, '') for uri in flag_dict.get(Flag.Entity.value, [])]
         condition = []
         middle = []
-        # 处理 EntityIndex
-        uris = flag_dict.get(Flag.EntityIndex.value, [])
-        for uri in uris:
-            condition.append((uri, ''))
         # 处理 Attribute
         uris = flag_dict.get(Flag.Attribute.value, [])
         target.extend([(uri, '') for uri in uris if not urimanager.attribute_extensions(uri)])
@@ -404,19 +400,34 @@ class InfoExtractStrategy(Strategy):
                 middle_name = '%s_%s' % (extension, middle_name)
             uri = '%s%s%s' % (uri, sign, value)
             condition.append((uri, ''))
+        condition_paths = [urimanager.path(uri) for uri, _ in condition]
+        target_paths = [urimanager.path(uri) for uri, _ in target]
+        # 处理 EntityIndex
+        uris = flag_dict.get(Flag.EntityIndex.value, [])
+        for uri in uris:
+            path = urimanager.path(uri)
+            if path in target_paths:
+                target.remove((path, ''))
+                target_paths.remove(path)
+            if path in condition_paths:
+                index = condition_paths.index(path)
+                another_uri, _ = condition[index]
+                _, _, value = urimanager.separate(uri)
+                uri = '%s|%s' % (another_uri, value)
+                condition[index] = (uri, '')
+            else:
+                condition.append((uri, ''))
+                condition_paths.append(path)
         # 处理 Relation
         uris = flag_dict.get(Flag.Relation.value, [])
-        condition_paths = [urimanager.path(uri) for uri, _ in condition]
         for uri in uris:
             dirname = urimanager.dirname(uri)
             if uri not in condition_paths:
-                if (uri, '') not in target:
+                if uri not in target_paths:
                     target.append((uri, ''))
-            elif dirname not in condition_paths:
-                if (dirname, '') not in target:
+            if dirname not in condition_paths:
+                if dirname not in target_paths:
                     target.append((dirname, ''))
-            else:
-                continue
         return Query(model, middle, target, condition)
 
     def _questiontype(self, query: Query):

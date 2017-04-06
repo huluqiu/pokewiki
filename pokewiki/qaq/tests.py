@@ -117,8 +117,8 @@ class AldnoahTestCase(TestCase):
                 ('qaq://Pokemon:name/moves:name', ''),
             ],
             'condition': [
-                ('qaq://Pokemon:name=皮卡丘', ''),
                 ('qaq://Pokemon:name/moves:name/type:name=电', ''),
+                ('qaq://Pokemon:name=皮卡丘', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -251,11 +251,12 @@ class AldnoahTestCase(TestCase):
         self._test_answer(question, except_type, except_uris, except_query)
 
     def test_answer_double_entityindex_attribute(self):
-        question = '十万伏特和飞叶快刀的属性是啥'
+        question = '十万伏特和飞叶快刀打雷的属性是啥'
         except_type = 'specific'
         except_uris = [
             ('qaq://Move:name=十万伏特', 'wi'),
             ('qaq://Move:name=飞叶快刀', 'wi'),
+            ('qaq://Move:name=打雷', 'wi'),
             ('qaq://Move:name/type:name', 'wa'),
         ]
         except_query = {
@@ -264,8 +265,7 @@ class AldnoahTestCase(TestCase):
                 ('qaq://Move:name/type:name', ''),
             ],
             'condition': [
-                ('qaq://Move:name=十万伏特', ''),
-                ('qaq://Move:name=飞叶快刀', ''),
+                ('qaq://Move:name=十万伏特|飞叶快刀|打雷', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -558,8 +558,8 @@ class AldnoahTestCase(TestCase):
                 ('qaq://Pokemon:name/moves:name/power', ''),
             ],
             'condition': [
-                ('qaq://Pokemon:name=皮卡丘', ''),
                 ('qaq://Pokemon:name/moves:name/power', 'max'),
+                ('qaq://Pokemon:name=皮卡丘', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)
@@ -696,8 +696,8 @@ class AldnoahTestCase(TestCase):
             'middle': [],
             'target': [],
             'condition': [
-                ('qaq://Pokemon:name=皮卡丘', ''),
                 ('qaq://Pokemon:name/forms:name/abilities:name@>静电', ''),
+                ('qaq://Pokemon:name=皮卡丘', ''),
             ]
         }
         self._test_answer(question, except_type, except_uris, except_query)

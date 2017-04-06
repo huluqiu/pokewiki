@@ -7,7 +7,7 @@ _extension_flag = '.'
 
 _re_model = re.compile(r'(?<=://)\w+(?=:)')
 _re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
-_re_wa = re.compile(r'(\w+:?\w+(?:\.?\w+)*)(\W*)(\w*)')
+_re_wa = re.compile(r'(\w+:?\w+(?:\.?\w+)*)(\W*)([\w|]*)')
 
 
 def schema(uri):
