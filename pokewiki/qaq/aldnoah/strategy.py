@@ -327,18 +327,28 @@ class InfoExtractStrategy(Strategy):
         def is_maxormin(extension):
             return extension in [AttributeExtend.Max.value, AttributeExtend.Min.value]
 
-        def solve_last(uri, extension, target, condition):
-            dirname = urimanager.dirname(uri)
-            dirname = (dirname, '')
-            if dirname in target:
-                if is_maxormin(extension):
-                    condition.append((uri, extension))
-                    target.append((uri, ''))
-                else:
-                    target.remove(dirname)
-                    target.append((uri, extension))
+        def solve_last(uri, extension, target, condition, middle):
+            rooturi = urimanager.root(uri)
+            if router.is_special_extension(extension):
+                middle.append((uri, extension))
+                basename = urimanager.basename(uri)
+                middle_name = '%s_%s' % (extension, basename)
+                uri = urimanager.append(rooturi, path=middle_name)
+                target.append((uri, ''))
             else:
-                target.append((uri, extension))
+                dirname = urimanager.dirname(uri)
+                dirname = (dirname, '')
+                rooturi = (rooturi, '')
+                if dirname in target or rooturi in target:
+                    if is_maxormin(extension):
+                        condition.append((uri, extension))
+                        target.append((uri, ''))
+                    else:
+                        if dirname in target:
+                            target.remove(dirname)
+                        target.append((uri, extension))
+                else:
+                    target.append((uri, extension))
 
         model = [urimanager.modelname(cell.uri) for cell in domaincells]
         model = model[0] if len(set(model)) == 1 else ''
@@ -363,7 +373,7 @@ class InfoExtractStrategy(Strategy):
                 continue
             uri = urimanager.path(uri, showextensions=False)
             if len(extensions) == 1:
-                solve_last(uri, extensions[0], target, condition)
+                solve_last(uri, extensions[0], target, condition, middle)
             else:
                 extension = extensions[0]
                 middle.append((uri, extension))
@@ -375,33 +385,34 @@ class InfoExtractStrategy(Strategy):
                     middle_name = '%s_%s' % (extension, middle_name)
                     # 最后一个
                     if (index + 2) == len(extensions):
-                        solve_last(uri, extension, target, condition)
+                        solve_last(uri, extension, target, condition, middle)
                     else:
                         middle.append((uri, extension))
+        target_paths = [urimanager.path(uri) for uri, _ in target]
         # 处理 Pair
         uris = flag_dict.get(Flag.Paired.value, [])
         for uri in uris:
             extensions = urimanager.attribute_extensions(uri)
-            if not extensions:
-                condition.append((uri, ''))
-                continue
-            uri, sign, value = urimanager.separate(uri, showextensions=False)
-            extension = extensions[0]
-            middle.append((uri, extension))
-            basename = urimanager.basename(uri, showindex=False)
-            middle_name = '%s_%s' % (extension, basename)
             rooturi = urimanager.root(uri)
-            uri = urimanager.append(rooturi, path=middle_name)
-            for index, extension in enumerate(extensions[1:]):
-                if (index + 2) == len(extensions):
-                    break
-                uri = urimanager.append(rooturi, path=middle_name)
+            if rooturi not in target_paths:
+                target.append((rooturi, ''))
+                target_paths.append(rooturi)
+            if extensions:
+                uri, sign, value = urimanager.separate(uri, showextensions=False)
+                extension = extensions[0]
                 middle.append((uri, extension))
-                middle_name = '%s_%s' % (extension, middle_name)
-            uri = '%s%s%s' % (uri, sign, value)
+                basename = urimanager.basename(uri, showindex=False)
+                middle_name = '%s_%s' % (extension, basename)
+                uri = urimanager.append(rooturi, path=middle_name)
+                for index, extension in enumerate(extensions[1:]):
+                    if (index + 2) == len(extensions):
+                        break
+                    uri = urimanager.append(rooturi, path=middle_name)
+                    middle.append((uri, extension))
+                    middle_name = '%s_%s' % (extension, middle_name)
+                uri = '%s%s%s' % (uri, sign, value)
             condition.append((uri, ''))
         condition_paths = [urimanager.path(uri) for uri, _ in condition]
-        target_paths = [urimanager.path(uri) for uri, _ in target]
         # 处理 EntityIndex
         uris = flag_dict.get(Flag.EntityIndex.value, [])
         for uri in uris:
@@ -413,7 +424,7 @@ class InfoExtractStrategy(Strategy):
                 index = condition_paths.index(path)
                 another_uri, _ = condition[index]
                 _, _, value = urimanager.separate(uri)
-                uri = '%s|%s' % (another_uri, value)
+                uri = urimanager.valuecombine(another_uri, value)
                 condition[index] = (uri, '')
             else:
                 condition.append((uri, ''))
@@ -428,6 +439,7 @@ class InfoExtractStrategy(Strategy):
             if dirname not in condition_paths:
                 if dirname not in target_paths:
                     target.append((dirname, ''))
+        condition.sort(key=lambda n: n[1])
         return Query(model, middle, target, condition)
 
     def _questiontype(self, query: Query):

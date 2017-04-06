@@ -4,6 +4,7 @@ _schema_flag = '://'
 _path_flag = '/'
 _index_flag = ':'
 _extension_flag = '.'
+_value_or_flag = '|'
 
 _re_model = re.compile(r'(?<=://)\w+(?=:)')
 _re_wi = re.compile(r'\w+://\w+:(\w+)(=)(\w+)')
@@ -29,6 +30,10 @@ def removeschema(uri):
     if len(r) > 1:
         uri = r[1]
     return uri
+
+
+def split(uri):
+    return uri.split(_path_flag)
 
 
 def root(uri):
@@ -61,6 +66,8 @@ def separate(uri, showschema=True, showindex=True, showextensions=True):
     for node in nodes[0:-1]:
         if not showindex:
             node = node.split(_index_flag)[0]
+        # 路径中的 extension 会影响寻址
+        node = node.split(_extension_flag)[0]
         path = '%s%s%s' % (path, node, _path_flag)
     path += leaf
     if showschema:
@@ -112,6 +119,14 @@ def value(uri):
     return separate(uri)[2]
 
 
+def valuecombine(uri, value):
+    return '%s%s%s' % (uri, _value_or_flag, value)
+
+
+def valuesplit(value):
+    return value.split(_value_or_flag)
+
+
 def related(uri1, uri2):
     uri1 = path(uri1).lower()
     uri2 = path(uri2).lower()
@@ -129,8 +144,12 @@ def modelname(uri):
 
 
 def append(uri, path=None, sign=None, value=None):
+    s = _path_flag
+    if not uri:
+        uri = ''
+        s = ''
     if path:
-        uri = '%s%s%s' % (uri, _path_flag, path)
+        uri = '%s%s%s' % (uri, s, path)
     if sign:
         uri = '%s%s' % (uri, sign)
     if value:

@@ -42,9 +42,9 @@ class Aldnoah(object):
             strategy.analyze(qobj)
 
         # 检索数据
-        queryset = self._retrieve.retrieve(qobj.query)
+        queryset, values = self._retrieve.retrieve(qobj.query)
 
         # 回答
-        answer = self._answereg.answer(qobj, queryset)
+        answer = self._answereg.answer(qobj, queryset, values)
 
         return answer

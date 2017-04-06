@@ -163,6 +163,10 @@ class UrimanagerTestCase(unittest.TestCase):
         self.assertEqual(s, 'Pokemon')
 
     def test_append(self):
+        uri = ''
+        s = urimanager.append(uri, path='moves:name')
+        self.assertEqual(s, 'moves:name')
+
         uri = 'qaq://Pokemon:name'
         s = urimanager.append(uri, path='moves:name')
         self.assertEqual(s, 'qaq://Pokemon:name/moves:name')

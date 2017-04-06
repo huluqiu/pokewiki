@@ -1,5 +1,6 @@
 from .models import Question, Answer, QuestionType
 from qaq.serializers import DomainCellSerializer
+from django.conf import settings
 
 
 class AnswerEngine(object):
@@ -17,16 +18,18 @@ class DjangoAnswerEngine(AnswerEngine):
     def __init__(self):
         AnswerEngine.__init__(self)
 
-    def answer(self, qobj: Question, queryset):
-        if qobj.type is QuestionType.Bool:
+    def answer(self, qobj: Question, queryset, values):
+        if qobj.type is QuestionType.Bool.value:
             if queryset:
                 answer = '对^_^'
             else:
                 answer = '不不不→_→'
-        elif qobj.type is QuestionType.Specific:
-            answer = queryset
+        elif qobj.type is QuestionType.Specific.value:
+            answer = values
         else:
-            answer = queryset
+            answer = values
+        if settings.TESTING:
+            answer = values
         return {
             'question': qobj.question,
             'segment': str(qobj.segment),

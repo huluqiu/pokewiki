@@ -62,6 +62,7 @@ class AttributeExtend(Enum):
     Max = 'max'
     Min = 'min'
     Sum = 'sum'
+    Species = 'species'
 
 
 def is_domainword(flag):
@@ -246,6 +247,10 @@ def get_attribute_extend(word):
     func = _attribute_extend_map.get(word, None)
     if func:
         return AttributeExtend(func)
+
+
+def is_special_extension(extension):
+    return extension in [AttributeExtend.Species.value]
 
 
 def register_quantifier(path):
