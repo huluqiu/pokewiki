@@ -161,7 +161,7 @@ class DjangoRetrieve(Retrieve):
             }
         else:
             if values:
-                values = queryset.values(*values).distinct()
+                values = queryset.values_list(*values).distinct()
                 values = list(values)
             values.extend(aggregates)
             return queryset, values

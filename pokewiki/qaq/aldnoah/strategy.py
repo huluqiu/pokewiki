@@ -443,11 +443,11 @@ class InfoExtractStrategy(Strategy):
         return Query(model, middle, target, condition)
 
     def _questiontype(self, query: Query):
-        q = len(query.condition) == 1 and query.condition[0][1] == 'wi'
-        if not query.target and not q:
-            return QuestionType.Bool.value
-        else:
-            return QuestionType.Specific.value
+        # q = len(query.condition) == 1 and query.condition[0][1] == 'wi'
+        # if not query.target and not q:
+            # return QuestionType.Bool.value
+        # else:
+        return QuestionType.Specific.value
 
     def analyze(self, qobj: Question):
         blocks = self._filteruri(qobj.segment)
